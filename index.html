@@ -489,7 +489,10 @@
         </div>
       </div>
       <div style="display:flex;gap:6px;padding-top:6px;margin-bottom:12px;">
-        <div style="flex:1;min-width:0;box-sizing:border-box;border:1.5px solid transparent;padding:8px 2px;"></div>
+        <div id="vaultBtn" role="button" aria-label="Vault" style="flex:1;min-width:0;min-height:62px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;color:#fff;font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;">
+          <span style="font-size:22px;line-height:1;">🔐</span>
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Vault</span>
+        </div>
         <div id="homeSyncHoldWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#3C9142;border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeSyncHoldBadge" style="font-size:26px;font-weight:700;color:#fff;line-height:1;">0</span>
           <span id="homeSyncHoldLabel" style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Sync On</span>
@@ -527,9 +530,6 @@
       <button class="btn" id="manageReasonsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📋</span>Reasons</button>
       <button class="btn" id="manageCustomAIBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🧪</span>Custom AI</button>
     </div>
-
-    <div class="section-label">Security</div>
-    <button class="btn btn-nav-tool btn-full" id="vaultBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">🔐</span>&nbsp;&nbsp;Vault</button>
 
     <div class="section-label">Help</div>
     <button class="btn btn-outline btn-full" id="textListEntryBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">✉️</span>&nbsp;&nbsp;Text a List</button>

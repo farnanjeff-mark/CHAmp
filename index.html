@@ -12644,9 +12644,10 @@
       const aiOpen = savedFoldersOpen.has('builtin-ai');
       html += `<div class="sr-folder">
         <div class="sr-folder-head">
-          <div class="sr-folder-name" data-act="toggle" data-id="builtin-ai">${aiOpen?'📂':'📁'}&nbsp;AI Generated Reports<span class="n">1 report</span></div>
+          <div class="sr-folder-name" data-act="toggle" data-id="builtin-ai">${aiOpen?'📂':'📁'}&nbsp;AI Generated Reports<span class="n">2 reports</span></div>
         </div>
-        ${aiOpen ? `<div class="sr-row"><div class="sr-main" data-act="runbuiltin" data-id="rate-of-gain"><div class="sr-title">Rate of Gain</div><div class="sr-sub">📈 Pounds gained and ADG between each cow's last two weighings — pick dates, group, location, owner. Print or export.</div></div></div>` : ''}
+        ${aiOpen ? `<div class="sr-row"><div class="sr-main" data-act="runbuiltin" data-id="rate-of-gain"><div class="sr-title">Rate of Gain</div><div class="sr-sub">📈 Pounds gained and ADG between each cow's last two weighings — pick dates, group, location, owner. Print or export.</div></div>
+          <div class="sr-row"><div class="sr-main" data-act="runbuiltin" data-id="no-recent-entries"><div class="sr-title">No Recent Entries</div><div class="sr-sub">🕒 Cows with no data entered in a time frame you pick, or none ever. Print or export.</div></div></div>` : ''}
       </div>`;
     }
     savedFolders.forEach(f=>{
@@ -12914,7 +12915,7 @@
       const id = t.dataset.id;
       if(t.dataset.act === 'star') toggleReportStar(id);
       else if(t.dataset.act === 'run') runSavedReport(id);
-      else if(t.dataset.act === 'runbuiltin'){ if(id === 'rate-of-gain') rateOfGainModal(); }
+      else if(t.dataset.act === 'runbuiltin'){ if(id === 'rate-of-gain') rateOfGainModal(); else if(id === 'no-recent-entries') noRecentEntriesModal(); }
       else if(t.dataset.act === 'editreport') editSavedReportModal(id);
       else if(t.dataset.act === 'delfolder') deleteReportFolder(id);
       else if(t.dataset.act === 'renamefolder') renameReportFolderModal(id);
@@ -13731,6 +13732,159 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url; a.download = 'rate-of-gain-' + todayLocal() + '.xlsx';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Exported');
+      }catch(e){ showToast('Export failed — try again'); }
+    });
+    render();
+  }
+
+  // ===================== NO RECENT ENTRIES (AI Generated Reports folder) =====================
+  function noRecentEntriesModal(){
+    const uniq = key => [...new Set(cows.map(c=>c[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+    const opts = list => '<option value="">All</option>' + list.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+    const fieldLbl = 'font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#0C447C;display:block;margin-bottom:4px;';
+    const modal = openModal(`
+      <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>No Recent Entries</span>
+        <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
+      </div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Active cows with nothing entered (weights, treatments, breeding, calving or notes) in the time frame you pick. Longest gap is listed first.</div>
+      <div style="background:#E6F1FB;border-radius:8px;padding:10px 12px;margin-bottom:12px;">
+        <div style="margin-bottom:8px;"><label style="${fieldLbl}">Show cows with no entry</label>
+          <select id="nreSpan">
+            <option value="180">In the last 6 months</option>
+            <option value="365" selected>In the last 1 year</option>
+            <option value="548">In the last 18 months</option>
+            <option value="730">In the last 2 years</option>
+            <option value="1095">In the last 3 years</option>
+            <option value="never">Ever (no entries at all)</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+          <div><label style="${fieldLbl}">Group</label><select id="nreGroup">${opts(uniq('cow_group'))}</select></div>
+          <div><label style="${fieldLbl}">Location</label><select id="nreLot">${opts(uniq('lot'))}</select></div>
+        </div>
+        <div><label style="${fieldLbl}">Owner</label><select id="nreOwner">${opts(uniq('owner'))}</select></div>
+      </div>
+      <div id="nreCount" style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:10px;"></div>
+      <div id="nreTableWrap" style="overflow-x:auto;margin-bottom:14px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-barn" id="nrePrintBtn">🖨️ Print</button>
+        <button class="btn btn-nav-tool" id="nreExportBtn">📊 Export</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-full" id="nreCloseBtn">Close</button>
+      </div>
+    `);
+    const headers = ['Cow #','Group','Location','Owner','Last Entry','Entry Type','Days Ago'];
+    let current = { rows: [], subtitle: '' };
+
+    // newest dated entry of any kind for one cow
+    function lastEntry(num){
+      let best = null;
+      const consider = (d, type)=>{ if(d && (!best || d > best.date)) best = { date: d, type }; };
+      weights.forEach(x=>{ if(x.cow_number === num) consider(x.weigh_date, 'Weight'); });
+      treatments.forEach(x=>{ if(x.cow_number === num) consider(x.date, 'Treatment'); });
+      calvings.forEach(x=>{ if(x.cow_number === num) consider(x.calving_date, 'Calving'); });
+      generalNotes.forEach(x=>{ if(x.cow_number === num) consider(x.note_date, 'Note'); });
+      breedingRecords.forEach(x=>{ if(x.cow_number === num){ consider(x.breed_date, 'Breeding'); consider(x.vet_call_date, 'Vet call'); } });
+      return best;
+    }
+    function compute(){
+      const span = modal.querySelector('#nreSpan').value;
+      const grp = modal.querySelector('#nreGroup').value;
+      const lot = modal.querySelector('#nreLot').value;
+      const own = modal.querySelector('#nreOwner').value;
+      const today = todayLocal();
+      const todayMs = new Date(today + 'T00:00:00').getTime();
+      let cutoff = '';
+      if(span !== 'never'){
+        const d = new Date(todayMs - Number(span) * 86400000);
+        cutoff = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      }
+      const out = [];
+      cows.forEach(cow=>{
+        if(!isActiveStatus(cow)) return;
+        if(grp && cow.cow_group !== grp) return;
+        if(lot && cow.lot !== lot) return;
+        if(own && cow.owner !== own) return;
+        const last = lastEntry(cow.number);
+        if(span === 'never'){ if(last) return; }
+        else if(last && last.date >= cutoff) return;
+        const days = last ? Math.round((todayMs - new Date(last.date + 'T00:00:00').getTime())/86400000) : null;
+        out.push({ cow, last, days });
+      });
+      // never-entered cows first, then longest gap first
+      out.sort((a,b)=>{
+        if(!a.last && b.last) return -1;
+        if(a.last && !b.last) return 1;
+        if(a.last && b.last && a.days !== b.days) return b.days - a.days;
+        return a.cow.number.localeCompare(b.cow.number, undefined, {numeric:true});
+      });
+      const bits = [];
+      if(span === 'never') bits.push('No entries ever');
+      else bits.push('No entry since ' + fmtDateShort(cutoff));
+      if(grp) bits.push('Group: ' + grp);
+      if(lot) bits.push('Location: ' + lot);
+      if(own) bits.push('Owner: ' + own);
+      current = { rows: out, subtitle: bits.join(' · ') };
+    }
+    function cellsFor(r){
+      return ['#'+r.cow.number, r.cow.cow_group||'', r.cow.lot||'', r.cow.owner||'',
+        r.last ? fmtDateShort(r.last.date) : 'Never', r.last ? r.last.type : '—', r.last ? String(r.days) : '—'];
+    }
+    function rowsHtml(pad){
+      return current.rows.map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#F7F2E6'};">${cellsFor(r).map(c=>`<td style="padding:${pad}px;">${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
+    }
+    function render(){
+      compute();
+      const n = current.rows.length;
+      modal.querySelector('#nreCount').textContent = n + ' cow' + (n!==1?'s':'') + ' · ' + current.subtitle;
+      const wrap = modal.querySelector('#nreTableWrap');
+      if(n === 0){ wrap.innerHTML = '<p class="empty">Every active cow has an entry in this time frame.</p>'; return; }
+      wrap.innerHTML = `<table style="width:auto;min-width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
+        <thead><tr style="background:#E6F1FB;">${headers.map(h=>`<th style="text-align:left;padding:8px;color:#0C447C;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rowsHtml(8)}</tbody></table>`;
+    }
+    ['#nreSpan','#nreGroup','#nreLot','#nreOwner'].forEach(sel=> modal.querySelector(sel).addEventListener('change', render));
+    modal.querySelector('#nreCloseBtn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+
+    modal.querySelector('#nrePrintBtn').addEventListener('click', ()=>{
+      if(current.rows.length === 0){ showToast('Nothing to print'); return; }
+      document.getElementById('printListOutput').innerHTML = `
+        <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
+          <h2 style="margin:0 0 4px;">Farnan Cattle Co. — No Recent Entries</h2>
+          <div style="font-size:13px;color:#555;margin-bottom:16px;">Printed ${fmtDate(todayLocal())} · ${current.rows.length} cow${current.rows.length!==1?'s':''} · ${escapeHtml(current.subtitle)}</div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px;">
+            <thead><tr>${headers.map(h=>`<th style="text-align:left;padding:5px;border-bottom:2px solid #000;">${h}</th>`).join('')}</tr></thead>
+            <tbody>${rowsHtml(5)}</tbody>
+          </table>
+        </div>`;
+      document.body.classList.add('printing-list');
+      requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
+    });
+
+    modal.querySelector('#nreExportBtn').addEventListener('click', async ()=>{
+      if(current.rows.length === 0){ showToast('Nothing to export'); return; }
+      if(typeof ExcelJS === 'undefined'){ showToast('Could not load spreadsheet library'); return; }
+      try{
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('No Recent Entries');
+        ws.addRow(headers);
+        ws.getRow(1).font = { bold:true };
+        current.rows.forEach(r=>{
+          ws.addRow([r.cow.number, r.cow.cow_group||'', r.cow.lot||'', r.cow.owner||'',
+            r.last ? fmtDateShort(r.last.date) : 'Never', r.last ? r.last.type : '', r.last ? r.days : '']);
+        });
+        ws.columns.forEach(col=>{ col.width = 14; });
+        const buffer = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'no-recent-entries-' + todayLocal() + '.xlsx';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast('Exported');

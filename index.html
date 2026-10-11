@@ -11103,6 +11103,7 @@
       { key:'lot',  label:'Location',                    type:'text', get:(r)=> r.c.lot },
       { key:'owner',label:'Owner',                       type:'text', get:(r)=> r.c.owner },
       { key:'group',label:'Group',                       type:'text', get:(r)=> r.c.cow_group },
+      { key:'season',label:'Herd Season',                type:'text', get:(r)=> r.c.herd_season },
       { key:'sire', label:'Sire (her latest calf)',      type:'text', get:(r,x)=> x.lc ? x.lc.sire : '' },
       { key:'cdate',label:'Calving date (latest calf)',  type:'date', get:(r,x)=> x.lc ? x.lc.calving_date : '' },
       { key:'bw',   label:'Birth weight (latest calf)',  type:'num',  get:(r,x)=> x.lc ? advNumOrNull(x.lc.birth_weight) : null },

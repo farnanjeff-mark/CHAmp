@@ -12595,6 +12595,8 @@
     const r = savedReports.find(x=> x.id === id);
     if(!r) return;
     const st = r.settings || {};
+    if(r.report_type === 'claude_answer'){ showSavedClaudeAnswer(r); return; }
+    if(r.report_type === 'claude_question'){ askClaudeModal({ question: st.question || '', autoRun: true }); return; }
     gsReleaseResults();
     if(st.guided){ gsRunSaved(st); return; }
     const mode = (st.mode === 'calf' || r.report_type === 'calf_search') ? 'calf' : 'cow';
@@ -12629,7 +12631,7 @@
         ${savedManage ? `<button class="sr-star ${r.starred?'on':''}" data-act="star" data-id="${r.id}" title="Star">${r.starred?'★':'☆'}</button>` : ''}
         <div class="sr-main" data-act="run" data-id="${r.id}">
           <div class="sr-title">${escapeHtml(r.name)}</div>
-          <div class="sr-sub">${showFolder && fol ? '📁 ' + escapeHtml(fol.name) + ' — ' : ''}${r.report_type === 'calf_search' ? '🐮 Calf — ' : ''}${r.report_type === 'guided_search' ? '🧭 Guided — ' : ''}${escapeHtml(savedSettingsSummary(r.settings))}</div>
+          <div class="sr-sub">${showFolder && fol ? '📁 ' + escapeHtml(fol.name) + ' — ' : ''}${r.report_type === 'calf_search' ? '🐮 Calf — ' : ''}${r.report_type === 'guided_search' ? '🧭 Guided — ' : ''}${r.report_type === 'claude_answer' ? '💬 Answer' + ((r.settings && r.settings.saved_on) ? ' from ' + fmtDateShort(r.settings.saved_on) : '') + ' — ' : ''}${r.report_type === 'claude_question' ? '💬 Question — ' : ''}${escapeHtml((r.report_type === 'claude_answer' || r.report_type === 'claude_question') ? ((r.settings && r.settings.question) || '') : savedSettingsSummary(r.settings))}</div>
         </div>
         ${savedManage ? `<button class="sr-ico edit" data-act="editreport" data-id="${r.id}" title="Edit report" aria-label="Edit report">&#9998;</button>` : ''}
       </div>`;
@@ -12734,7 +12736,7 @@
       <div class="modal-title">Save This Report</div>
       <div class="field">
         <label>Report Name</label>
-        <input type="text" id="svrName" placeholder="e.g. Open cows – North pasture" autofocus/>
+        <input type="text" id="svrName" placeholder="e.g. Open cows – North pasture" value="${custom && custom.name ? escapeHtml(custom.name) : ''}" autofocus/>
       </div>
       <div class="field">
         <label>Folder</label>
@@ -12744,7 +12746,7 @@
         <label>New Folder Name</label>
         <input type="text" id="svrNewFolder" placeholder="e.g. Weaning"/>
       </div>
-      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Saves your choices (filters, sort, columns). When you open it later it runs on the herd as it is that day.</div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">${custom && custom.note ? escapeHtml(custom.note) : 'Saves your choices (filters, sort, columns). When you open it later it runs on the herd as it is that day.'}</div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="cancelSvr">Cancel</button>
         <button class="btn btn-barn" id="confirmSvr">Save</button>
@@ -13896,7 +13898,52 @@
   }
 
   // ===================== ASK CLAUDE (Reports menu) =====================
-  function askClaudeModal(){
+  function claudeFmtAnswer(text){
+    const safe = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    return safe.split('\n').map(line=>{
+      const t = line.trim();
+      if(/^[-*]\s+/.test(t)) return '<div style="padding-left:14px;text-indent:-10px;">• ' + t.replace(/^[-*]\s+/, '') + '</div>';
+      return t === '' ? '<div style="height:8px;"></div>' : '<div>' + t + '</div>';
+    }).join('');
+  }
+  function claudePrintAnswer(item){
+    if(!item || !item.answer){ showToast('Nothing to print'); return; }
+    document.getElementById('printListOutput').innerHTML = `
+      <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
+        <h2 style="margin:0 0 4px;">Farnan Cattle Co. — Ask Claude</h2>
+        <div style="font-size:13px;color:#555;margin-bottom:12px;">${item.saved_on ? 'Answer from ' + escapeHtml(fmtDate(item.saved_on)) + ' · ' : ''}Printed ${escapeHtml(fmtDate(todayLocal()))}</div>
+        <div style="font-size:13px;margin-bottom:12px;"><b>Question:</b> ${escapeHtml(item.question)}</div>
+        <div style="font-size:13px;line-height:1.45;">${claudeFmtAnswer(item.answer)}</div>
+        <div style="font-size:11px;color:#555;margin-top:16px;"><b>What was looked at:</b><ul style="margin:4px 0 0 18px;padding:0;">${(item.looked||[]).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')}</ul></div>
+      </div>`;
+    document.body.classList.add('printing-list');
+    requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
+  }
+  function showSavedClaudeAnswer(r){
+    const st = r.settings || {};
+    const item = { question: st.question || '', answer: st.answer || '', looked: st.looked || [], saved_on: st.saved_on || '' };
+    const modal = openModal(`
+      <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${escapeHtml(r.name)}</span>
+        <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
+      </div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">💬 Saved answer${item.saved_on ? ' from ' + escapeHtml(fmtDate(item.saved_on)) : ''}. This is exactly what Claude said that day; it does not update.</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;margin-bottom:10px;"><b>Question:</b> ${escapeHtml(item.question)}</div>
+      <div style="background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:12px;font-family:Arial,sans-serif;font-size:14px;line-height:1.45;color:var(--ink);margin-bottom:10px;">${claudeFmtAnswer(item.answer)}</div>
+      <details style="font-family:Arial,sans-serif;font-size:12px;color:#0C447C;margin-bottom:14px;">
+        <summary style="cursor:pointer;font-weight:700;">Here's what I looked at</summary>
+        <ul style="margin:6px 0 0 18px;padding:0;color:#6b6350;">${item.looked.length ? item.looked.map(x=>'<li>'+escapeHtml(x)+'</li>').join('') : '<li>Not recorded.</li>'}</ul>
+      </details>
+      <div class="modal-actions"><button class="btn btn-barn" id="scaPrintBtn">🖨️ Print</button></div>
+      <div class="modal-actions"><button class="btn btn-outline btn-full" id="scaCloseBtn">Close</button></div>
+    `);
+    modal.querySelector('#scaPrintBtn').addEventListener('click', ()=> claudePrintAnswer(item));
+    modal.querySelector('#scaCloseBtn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+  }
+
+  function askClaudeModal(startOpts){
+    startOpts = startOpts || {};
     const PASS_KEY = 'askClaudePasscode';
     const getPass = ()=>{ try{ return localStorage.getItem(PASS_KEY) || ''; }catch(e){ return ''; } };
     const setPass = v =>{ try{ if(v) localStorage.setItem(PASS_KEY, v); else localStorage.removeItem(PASS_KEY); }catch(e){} };
@@ -13929,6 +13976,10 @@
         <div class="modal-actions">
           <button class="btn btn-barn" id="acPrintBtn">🖨️ Print</button>
         </div>
+        <div class="modal-actions">
+          <button class="btn btn-nav-tool" id="acSaveAnswerBtn">💾 Save Answer</button>
+          <button class="btn btn-nav-tool" id="acSaveQuestionBtn">⭐ Save Question</button>
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline btn-full" id="acCloseBtn">Close</button>
@@ -13946,14 +13997,7 @@
 
     if(!getPass()) passWrap.classList.remove('hidden');
 
-    function fmtAnswer(text){
-      const safe = escapeHtml(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-      return safe.split('\n').map(line=>{
-        const t = line.trim();
-        if(/^[-*]\s+/.test(t)) return '<div style="padding-left:14px;text-indent:-10px;">• ' + t.replace(/^[-*]\s+/, '') + '</div>';
-        return t === '' ? '<div style="height:8px;"></div>' : '<div>' + t + '</div>';
-      }).join('');
-    }
+    const fmtAnswer = claudeFmtAnswer;
 
     async function ask(){
       const question = q.value.trim();
@@ -14002,20 +14046,24 @@
     askBtn.addEventListener('click', ask);
     modal.querySelector('#acCloseBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
-    modal.querySelector('#acPrintBtn').addEventListener('click', ()=>{
-      if(!current.answer){ showToast('Nothing to print'); return; }
-      document.getElementById('printListOutput').innerHTML = `
-        <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
-          <h2 style="margin:0 0 4px;">Farnan Cattle Co. — Ask Claude</h2>
-          <div style="font-size:13px;color:#555;margin-bottom:12px;">Printed ${fmtDate(todayLocal())}</div>
-          <div style="font-size:13px;margin-bottom:12px;"><b>Question:</b> ${escapeHtml(current.question)}</div>
-          <div style="font-size:13px;line-height:1.45;">${fmtAnswer(current.answer)}</div>
-          <div style="font-size:11px;color:#555;margin-top:16px;"><b>What was looked at:</b><ul style="margin:4px 0 0 18px;padding:0;">${current.looked.map(x=>'<li>'+escapeHtml(x)+'</li>').join('')}</ul></div>
-        </div>`;
-      document.body.classList.add('printing-list');
-      requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
+    modal.querySelector('#acPrintBtn').addEventListener('click', ()=> claudePrintAnswer(current));
+    const saveName = ()=> (current.question || '').replace(/\s+/g,' ').slice(0, 60);
+    modal.querySelector('#acSaveAnswerBtn').addEventListener('click', ()=>{
+      if(!current.answer){ showToast('Ask a question first'); return; }
+      saveAdvReportModal({ type:'claude_answer', name: saveName(),
+        note:'Saves this answer exactly as it is today, with the date. Open it later from Saved Reports; it will not change.',
+        settings:{ question: current.question, answer: current.answer, looked: current.looked, saved_on: todayLocal() } });
     });
-    setTimeout(()=>{ try{ (getPass() ? q : passIn).focus(); }catch(e){} }, 50);
+    modal.querySelector('#acSaveQuestionBtn').addEventListener('click', ()=>{
+      const question = (current.question || q.value || '').trim();
+      if(!question){ showToast('Type a question first'); return; }
+      saveAdvReportModal({ type:'claude_question', name: question.replace(/\s+/g,' ').slice(0, 60),
+        note:'Saves just the question. When you open it later, Claude looks it up again on the herd as it is that day (costs a few cents).',
+        settings:{ question } });
+    });
+    if(startOpts.question){ q.value = startOpts.question; }
+    if(startOpts.autoRun && getPass()){ setTimeout(ask, 80); }
+    else setTimeout(()=>{ try{ (getPass() ? q : passIn).focus(); }catch(e){} }, 50);
   }
 
   function headcountByOwnerModal(){

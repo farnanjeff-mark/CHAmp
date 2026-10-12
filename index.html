@@ -905,10 +905,10 @@
         <div class="field">
           <label>Status</label>
           <select id="advSearchStatus">
-            <option value="">Any</option>
-            <option value="Active">Active</option>
+            <option value="">Active (default)</option>
             <option value="Sold">Sold</option>
             <option value="Deceased">Deceased</option>
+            <option value="__all__">All (incl. sold &amp; deceased)</option>
           </select>
         </div>
         <div class="field"></div>
@@ -11613,7 +11613,9 @@
       }
       if(pregBtOnly && !c.preg_bt) return false;
       if(sellOnly && !c.sell) return false;
-      if(status){ if(status === 'Active' ? !isActiveStatus(c) : c.status !== status) return false; }
+      if(status === '__all__'){ /* show every status */ }
+      else if(status === '' || status === 'Active'){ if(advMode !== 'calf' && !isActiveStatus(c)) return false; }
+      else if(c.status !== status) return false;
       if(tagNeeded && !c.tag_needed) return false;
       if(flagged && !c.needs_entry) return false;
       if(calvedPending && !c.calved) return false;

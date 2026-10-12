@@ -13906,14 +13906,57 @@
       return t === '' ? '<div style="height:8px;"></div>' : '<div>' + t + '</div>';
     }).join('');
   }
+  function claudeCellText(v){
+    v = (v==null) ? '' : String(v);
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? fmtDateShort(v) : v;
+  }
+  function claudeTableHtml(rep, forPrint){
+    const th = forPrint
+      ? 'border:1px solid #999;padding:4px 6px;text-align:left;background:#eee;font-size:12px;'
+      : 'padding:7px 8px;text-align:left;background:#E6F1FB;color:#0C447C;font-size:12px;font-weight:700;border-bottom:2px solid #2E88C4;white-space:nowrap;';
+    const head = '<tr>' + rep.columns.map(c=>'<th style="'+th+'">'+escapeHtml(c)+'</th>').join('') + '</tr>';
+    const body = rep.rows.map((r,i)=>{
+      const bg = forPrint ? '' : 'background:' + (i%2 ? '#F7F2E6' : '#fff') + ';';
+      const td = (forPrint ? 'border:1px solid #999;padding:3px 6px;font-size:12px;' : 'padding:6px 8px;font-size:13px;border-bottom:1px solid #e3e8ee;') + bg;
+      return '<tr>' + r.map(v=>'<td style="'+td+'">'+escapeHtml(claudeCellText(v))+'</td>').join('') + '</tr>';
+    }).join('');
+    return '<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
+  }
+  function claudeReportHtml(rep){
+    return '<div style="font-size:16px;font-weight:700;color:#0C447C;margin-bottom:4px;">'+escapeHtml(rep.title)+'</div>'
+      + '<div style="font-size:13px;margin-bottom:8px;">'+escapeHtml(rep.summary)+'</div>'
+      + '<div style="overflow-x:auto;">'+claudeTableHtml(rep,false)+'</div>'
+      + '<div style="font-size:11px;color:#6b6350;margin-top:6px;">'+rep.rows.length+' row'+(rep.rows.length===1?'':'s')+'</div>'
+      + (rep.note ? '<div style="font-size:12px;font-style:italic;color:#6b6350;margin-top:6px;">'+escapeHtml(rep.note)+'</div>' : '');
+  }
+  async function claudeExportReport(rep){
+    if(!rep || !rep.rows || !rep.rows.length){ showToast('Nothing to export'); return; }
+    if(typeof ExcelJS === 'undefined'){ showToast('Could not load spreadsheet library'); return; }
+    try{
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet((rep.title||'Report').replace(/[\\\/?*\[\]:]/g,' ').slice(0,31) || 'Report');
+      ws.addRow(rep.columns);
+      ws.getRow(1).font = { bold:true };
+      rep.rows.forEach(r=> ws.addRow(r.map(claudeCellText)));
+      ws.columns.forEach(col=>{ col.width = 16; });
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type:'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'ask-claude-' + todayLocal() + '.xlsx';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Exported');
+    }catch(e){ showToast('Export failed — try again'); }
+  }
   function claudePrintAnswer(item){
-    if(!item || !item.answer){ showToast('Nothing to print'); return; }
+    if(!item || (!item.answer && !item.report)){ showToast('Nothing to print'); return; }
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
         <h2 style="margin:0 0 4px;">Farnan Cattle Co. — Ask Claude</h2>
         <div style="font-size:13px;color:#555;margin-bottom:12px;">${item.saved_on ? 'Answer from ' + escapeHtml(fmtDate(item.saved_on)) + ' · ' : ''}Printed ${escapeHtml(fmtDate(todayLocal()))}</div>
         <div style="font-size:13px;margin-bottom:12px;"><b>Question:</b> ${escapeHtml(item.question)}</div>
-        <div style="font-size:13px;line-height:1.45;">${claudeFmtAnswer(item.answer)}</div>
+        ${item.report ? '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">'+escapeHtml(item.report.title)+'</div><div style="font-size:13px;margin-bottom:8px;">'+escapeHtml(item.report.summary)+'</div>'+claudeTableHtml(item.report,true)+(item.report.note?'<div style="font-size:12px;font-style:italic;margin-top:6px;">'+escapeHtml(item.report.note)+'</div>':'') : '<div style="font-size:13px;line-height:1.45;">'+claudeFmtAnswer(item.answer)+'</div>'}
         <div style="font-size:11px;color:#555;margin-top:16px;"><b>What was looked at:</b><ul style="margin:4px 0 0 18px;padding:0;">${(item.looked||[]).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')}</ul></div>
       </div>`;
     document.body.classList.add('printing-list');
@@ -13975,10 +14018,10 @@
         </details>
         <div class="modal-actions">
           <button class="btn btn-barn" id="acPrintBtn">🖨️ Print</button>
+          <button class="btn btn-profile-tool hidden" id="acExportBtn" style="justify-content:center;">📊 Export to Excel</button>
         </div>
         <div class="modal-actions">
-          <button class="btn btn-nav-tool" id="acSaveAnswerBtn">💾 Save Answer</button>
-          <button class="btn btn-nav-tool" id="acSaveQuestionBtn">⭐ Save Question</button>
+          <button class="btn btn-nav-tool btn-full" id="acSaveQuestionBtn" style="justify-content:center;">⭐ Save Question</button>
         </div>
       </div>
       <div class="modal-actions">
@@ -13993,7 +14036,8 @@
     const ansWrap = modal.querySelector('#acAnswerWrap');
     const ansEl = modal.querySelector('#acAnswer');
     const lookedEl = modal.querySelector('#acLooked');
-    let current = { question:'', answer:'', looked:[] };
+    const exportBtn = modal.querySelector('#acExportBtn');
+    let current = { question:'', answer:'', looked:[], report:null };
 
     if(!getPass()) passWrap.classList.remove('hidden');
 
@@ -14024,8 +14068,9 @@
         if(r.ok && data && data.ok){
           setPass(pass);
           passWrap.classList.add('hidden');
-          current = { question, answer: data.answer || '', looked: data.looked_at || [] };
-          ansEl.innerHTML = fmtAnswer(current.answer);
+          current = { question, answer: data.answer || '', looked: data.looked_at || [], report: data.report || null };
+          ansEl.innerHTML = current.report ? claudeReportHtml(current.report) : fmtAnswer(current.answer);
+          exportBtn.classList.toggle('hidden', !current.report);
           lookedEl.innerHTML = current.looked.length
             ? current.looked.map(x=> '<li>' + escapeHtml(x) + '</li>').join('')
             : '<li>No lookups were needed.</li>';
@@ -14047,13 +14092,8 @@
     modal.querySelector('#acCloseBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
     modal.querySelector('#acPrintBtn').addEventListener('click', ()=> claudePrintAnswer(current));
+    exportBtn.addEventListener('click', ()=> claudeExportReport(current.report));
     const saveName = ()=> (current.question || '').replace(/\s+/g,' ').slice(0, 60);
-    modal.querySelector('#acSaveAnswerBtn').addEventListener('click', ()=>{
-      if(!current.answer){ showToast('Ask a question first'); return; }
-      saveAdvReportModal({ type:'claude_answer', name: saveName(),
-        note:'Saves this answer exactly as it is today, with the date. Open it later from Saved Reports; it will not change.',
-        settings:{ question: current.question, answer: current.answer, looked: current.looked, saved_on: todayLocal() } });
-    });
     modal.querySelector('#acSaveQuestionBtn').addEventListener('click', ()=>{
       const question = (current.question || q.value || '').trim();
       if(!question){ showToast('Type a question first'); return; }

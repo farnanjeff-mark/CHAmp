@@ -766,11 +766,9 @@
     <button class="btn btn-outline btn-full" id="reportsHomeBtn" style="padding:14px 16px;font-size:16px;margin-bottom:24px;"><span style="font-size:26px;">🏠</span>&nbsp;&nbsp;Home</button>
 
     <div class="section-label">Search</div>
-    <button class="btn btn-nav-tool btn-full" id="advancedSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🔍</span>&nbsp;&nbsp;Advanced Search</button>
-    <button class="btn btn-nav-tool btn-full" id="simpleReportBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📋</span>&nbsp;&nbsp;Simple Report</button>
+    <button class="btn btn-nav-tool btn-full" id="advancedSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🔍</span>&nbsp;&nbsp;Cow Search</button>
+    <button class="btn btn-nav-tool btn-full" id="calfSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🐮</span>&nbsp;&nbsp;Calf Search</button>
     <button class="btn btn-nav-tool btn-full" id="homeGlobalSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🔎</span>&nbsp;&nbsp;Search Everything</button>
-    <button class="btn btn-nav-tool btn-full" id="guidedSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🧭</span>&nbsp;&nbsp;Guided Cow Search</button>
-    <button class="btn btn-nav-tool btn-full" id="calfSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🐮</span>&nbsp;&nbsp;Guided Calf Search</button>
     <button class="btn btn-nav-tool btn-full" id="askClaudeBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">💬</span>&nbsp;&nbsp;Ask Claude</button>
     <button class="btn btn-nav-tool btn-full" id="savedReportsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">⭐</span>&nbsp;&nbsp;Saved Reports</button>
 
@@ -858,7 +856,7 @@
 
   <div class="view hidden" id="advancedSearchView" data-page="cow">
     <button class="btn btn-outline btn-full" id="advancedSearchHomeBtn" style="margin-bottom:16px;">🏠 Home</button>
-    <div class="modal-title" id="advPageTitle" style="margin-bottom:14px;">Advanced Search</div>
+    <div class="modal-title" id="advPageTitle" style="margin-bottom:14px;">Cow Search</div>
 
     <div class="adv-tiles" id="advTiles">
       <button class="adv-tile only-cow" data-tile="herd" data-panel="herd"><span class="t">Herd</span><span class="c">Any</span></button>
@@ -3594,7 +3592,7 @@
   }
   function showAdvancedSearch(){
     gsReleaseResults();
-    setHeaderTitle(advMode === 'calf' ? 'Calf' : 'Advanced', 'Search');
+    setHeaderTitle(advMode === 'calf' ? 'Calf' : 'Cow', 'Search');
     homeView.classList.add('hidden');
     utilitiesView.classList.add('hidden');
     reportsView.classList.add('hidden');
@@ -8212,12 +8210,7 @@
   document.getElementById('headcountByOwnerBtn').addEventListener('click', headcountByOwnerModal);
   document.getElementById('advancedSearchBtn').addEventListener('click', ()=> openSearchPage('cow'));
   document.getElementById('askClaudeBtn').addEventListener('click', askClaudeModal);
-  document.getElementById('simpleReportBtn').addEventListener('click', ()=>{
-    reportsView.classList.add('hidden');
-    showProfileList();
-    setHeaderTitle('Simple', 'Report');
-  });
-  document.getElementById('calfSearchBtn').addEventListener('click', ()=>{ gsCalfOnly = true; showGuidedSearch(); });
+  document.getElementById('calfSearchBtn').addEventListener('click', ()=> openSearchPage('calf'));
   document.getElementById('advancedSearchHomeBtn').addEventListener('click', showHome);
   document.getElementById('runAdvancedSearchBtn').addEventListener('click', runAdvancedSearch);
   document.getElementById('advSearchDatePreset').addEventListener('change', applyAdvancedSearchDatePreset);
@@ -11396,7 +11389,7 @@
     advMode = page;
     document.getElementById('advancedSearchView').dataset.page = page;
     const title = document.getElementById('advPageTitle');
-    if(title) title.textContent = page === 'calf' ? 'Calf Search' : 'Advanced Search';
+    if(title) title.textContent = page === 'calf' ? 'Calf Search' : 'Cow Search';
     advClosePanels();
     renderAdvColumnsPanel();
     advRefreshSortControls();
@@ -12500,7 +12493,6 @@
     gsRun();
   }
   (function wireGuided(){
-    document.getElementById('guidedSearchBtn').addEventListener('click', ()=>{ gsCalfOnly = false; showGuidedSearch(); });
     document.getElementById('guidedHomeBtn').addEventListener('click', ()=>{ showHome(); });
     guidedSearchView.addEventListener('click', (e)=>{
       const t = e.target;
@@ -12651,7 +12643,7 @@
       <div class="sr-folder" style="border-color:#D9A21B;">${starred.length ? starred.map(r=> row(r,true)).join('') : '<div class="sr-empty">Nothing starred yet. Tap Manage, then the ☆ next to a report, to put it here.</div>'}</div>
       <div class="section-label">Folders</div>`;
     if(savedFolders.length === 0){
-      html += '<div class="empty" style="padding:24px 20px;">No folders yet.<br/>Tap "+ New Folder" above, or save a report from Advanced Search.</div>';
+      html += '<div class="empty" style="padding:24px 20px;">No folders yet.<br/>Tap "+ New Folder" above, or save a report from Cow Search.</div>';
     }
     // Built-in folder (lives in the app itself, not the database) -- holds reports built for you by Claude
     {
@@ -12962,7 +12954,7 @@
     const countText = v.countText + (v.sortText ? ' · sorted by ' + v.sortText : '');
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
-        <h2 style="margin:0 0 4px;">Farnan Cattle Co. — ${v.mode === 'calf' ? 'Calf Search' : 'Advanced Search'}</h2>
+        <h2 style="margin:0 0 4px;">Farnan Cattle Co. — ${v.mode === 'calf' ? 'Calf Search' : 'Cow Search'}</h2>
         <div style="font-size:13px;color:#555;margin-bottom:16px;">Printed ${fmtDate(todayLocal())} · ${countText}</div>
         ${mainTable}
         ${v.avgText ? `<div style="margin-top:12px;font-size:13px;font-weight:700;">Averages: ${escapeHtml(v.avgText)}</div>` : ''}

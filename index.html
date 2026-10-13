@@ -14007,6 +14007,11 @@
       <div style="background:#E6F1FB;border-radius:8px;padding:10px 12px;margin-bottom:12px;">
         <label style="${fieldLbl}">Your question</label>
         <textarea id="acQuestion" rows="3" placeholder="Example: Which cows in the Birthing Lot are not Due Soon?" style="${inputCss}resize:vertical;"></textarea>
+        <label style="${fieldLbl}margin-top:10px;">Answer as</label>
+        <select id="acFormat" style="${inputCss}">
+          <option value="paragraph">Paragraph</option>
+          <option value="table">Table</option>
+        </select>
       </div>
       <div class="modal-actions">
         <button class="btn btn-nav-tool btn-full" id="acAskBtn" style="justify-content:center;">💬 Ask</button>
@@ -14039,6 +14044,9 @@
     const ansEl = modal.querySelector('#acAnswer');
     const lookedEl = modal.querySelector('#acLooked');
     const exportBtn = modal.querySelector('#acExportBtn');
+    const fmtSel = modal.querySelector('#acFormat');
+    try{ const sf = localStorage.getItem('askClaudeFormat'); if(sf === 'table' || sf === 'paragraph') fmtSel.value = sf; }catch(e){}
+    fmtSel.addEventListener('change', ()=>{ try{ localStorage.setItem('askClaudeFormat', fmtSel.value); }catch(e){} });
     let current = { question:'', answer:'', looked:[], report:null };
 
     if(!getPass()) passWrap.classList.remove('hidden');
@@ -14063,7 +14071,7 @@
           method:'POST',
           signal: ctrl.signal,
           headers:{ 'Content-Type':'application/json', 'apikey': SUPABASE_KEY, 'x-passcode': pass },
-          body: JSON.stringify({ question })
+          body: JSON.stringify({ question, format: fmtSel.value })
         });
         let data = null;
         try{ data = await r.json(); }catch(e){}

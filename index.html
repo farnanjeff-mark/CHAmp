@@ -11128,9 +11128,17 @@
       { key:'wdate',label:'Weaning date',                type:'date', get:(r)=> r.cv.weaning_date },
       { key:'gain', label:'Gain per day',                type:'num',  get:(r)=> weaningStats(r.cv) ? weaningStats(r.cv).gain : null },
       { key:'ntreat',label:'Number of treatments',       type:'num',  get:(r)=> calfTreatments.filter(t=> t.calving_id === r.cv.id).length },
-      { key:'lot',  label:"Mother's location",           type:'text', get:(r)=> r.c.lot },
-      { key:'owner',label:"Mother's owner",              type:'text', get:(r)=> r.c.owner },
-      { key:'group',label:"Mother's group",              type:'text', get:(r)=> r.c.cow_group }
+      { key:'lot',  label:"Location (mother's)",         type:'text', get:(r)=> r.c.lot },
+      { key:'owner',label:"Owner (mother's)",            type:'text', get:(r)=> r.c.owner },
+      { key:'group',label:"Group (mother's)",            type:'text', get:(r)=> r.c.cow_group },
+      { key:'mseason',label:"Herd season (mother's)",    type:'text', get:(r)=> r.c.herd_season },
+      { key:'mstatus',label:"Status (mother's)",         type:'text', get:(r)=> r.c.status || 'Active' },
+      { key:'sex',  label:'Sex',                         type:'text', get:(r)=> calfSexLabel(r.cv.calf_sex) },
+      { key:'assist',label:'Birth assist',               type:'text', get:(r)=> r.cv.birth_assist || 'None' },
+      { key:'outcome',label:'Outcome',                   type:'text', get:(r)=> advCalfOutcome(r.cv) },
+      { key:'agenow',label:'Age now (days)',             type:'num',  get:(r)=> r.cv.calving_date ? daysBetween(r.cv.calving_date, todayLocal()) : null },
+      { key:'weaned',label:'Weaned? (yes/no)',           type:'text', get:(r)=> (weaningStats(r.cv) || r.cv.weaning_date) ? 'Yes' : 'No' },
+      { key:'wage', label:'Age at weaning (days)',       type:'num',  get:(r)=> weaningStats(r.cv) ? weaningStats(r.cv).age : null }
     ]
   };
   const ADV_DIR_WORDS = { text:['A to Z','Z to A'], num:['Low to high','High to low'], date:['Oldest first','Newest first'] };

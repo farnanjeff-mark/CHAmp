@@ -1063,6 +1063,17 @@
       </div>
       <div class="row2">
         <div class="field">
+          <label>Grafted Calf</label>
+          <select id="advSearchGrafted">
+            <option value="">Any</option>
+            <option value="yes">Grafted only</option>
+            <option value="no">Not grafted</option>
+          </select>
+        </div>
+        <div class="field"></div>
+      </div>
+      <div class="row2">
+        <div class="field">
           <label>Birth Weight Min (lbs)</label>
           <input type="number" id="advSearchWeightMin" step="0.1" min="0" placeholder="Any"/>
         </div>
@@ -4610,6 +4621,7 @@
         ${r._pendingSync ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;border:1px solid #E24B4A;color:#791F1F;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:6px;">Not synced yet</div>` : ''}
         <div class="record-date">${fmtDate(r.calving_date)}</div>
         <div class="record-med">${calfSexLabel(r.calf_sex)} calf</div>
+        ${r.grafted ? `<div style="display:inline-block;margin:4px 0;background:#E6F1FB;border:1px solid #2E88C4;color:#0C447C;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;">Grafted · born to #${escapeHtml(r.birth_mother||'?')}</div>` : ''}
         ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
         ${weaningLineHtml(r)}
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
@@ -6354,6 +6366,16 @@
           ${BIRTH_ASSIST_OPTIONS.map(o=>`<option value="${o}" ${isEdit && existingRecord.birth_assist===o ? 'selected' : (!isEdit && o==='None' ? 'selected' : '')}>${o}</option>`).join('')}
         </select>
       </div>
+      <div class="field" style="background:#E6F1FB;border-radius:8px;padding:10px 12px;">
+        <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">
+          <input type="checkbox" id="calvGrafted" style="width:22px;height:22px;" ${isEdit && existingRecord.grafted ? 'checked' : ''}/>
+          <span>Grafted calf (born to another cow)</span>
+        </label>
+        <div id="calvBirthMotherWrap" class="${isEdit && existingRecord.grafted ? '' : 'hidden'}" style="margin-top:10px;">
+          <label>Birth mother # (the cow that had this calf)</label>
+          <input type="text" id="calvBirthMother" placeholder="e.g. 512" value="${isEdit ? escapeHtml(existingRecord.birth_mother||'') : ''}"/>
+        </div>
+      </div>
       <div class="field">
         <label>Notes</label>
         <textarea id="calvNotes" rows="2" placeholder="Calving notes, any complications, etc.">${isEdit ? escapeHtml(existingRecord.notes||'') : ''}</textarea>
@@ -6365,6 +6387,10 @@
     `);
     wireFieldWithOther(modal, 'calvSire');
     if(isEdit && existingRecord.sire) prefillFieldWithOther(modal, 'calvSire', existingRecord.sire, getBullOptionsWithExtras());
+    modal.querySelector('#calvGrafted').addEventListener('change', (e)=>{
+      modal.querySelector('#calvBirthMotherWrap').classList.toggle('hidden', !e.target.checked);
+      if(e.target.checked) setTimeout(()=>{ try{ modal.querySelector('#calvBirthMother').focus(); }catch(x){} }, 30);
+    });
     modal.querySelector('#cancelCalv').addEventListener('click', closeModal);
     modal.querySelector('#confirmCalv').addEventListener('click', async ()=>{
       const dateVal = modal.querySelector('#calvDate').value;
@@ -6373,7 +6399,10 @@
       const sire = valueOf(modal, 'calvSire');
       const assist = modal.querySelector('#calvAssist').value;
       const notes = modal.querySelector('#calvNotes').value.trim();
+      const grafted = modal.querySelector('#calvGrafted').checked;
+      const birthMother = modal.querySelector('#calvBirthMother').value.trim();
       if(!dateVal){ showToast('Calving date is required'); return; }
+      if(grafted && !birthMother){ showToast('Enter the birth mother # (or untick Grafted)'); return; }
       const btn = modal.querySelector('#confirmCalv');
       btn.disabled = true;
       await addBullIfNew(sire);
@@ -6381,7 +6410,9 @@
         calving_date: dateVal, calf_sex: sex||null, notes: notes||null,
         birth_weight: weightRaw ? parseFloat(weightRaw) : null,
         sire: sire||null,
-        birth_assist: assist||null
+        birth_assist: assist||null,
+        grafted: grafted,
+        birth_mother: grafted ? birthMother : null
       };
       try{
         let savedRecord;
@@ -11066,6 +11097,8 @@
         { key:'c_bw', label:'Birth Wt (lbs)', get:(r)=> r.cv.birth_weight != null ? String(r.cv.birth_weight) : '' },
         { key:'c_assist', label:'Birth Assist', get:(r)=> r.cv.birth_assist || 'None' },
         { key:'c_outcome', label:'Outcome', get:(r)=> advCalfOutcome(r.cv) },
+        { key:'c_graft', label:'Grafted?', get:(r)=> r.cv.grafted ? 'Yes' : '' },
+        { key:'c_bmother', label:'Born To (birth mother #)', get:(r)=> r.cv.grafted ? (r.cv.birth_mother || '') : '' },
         { key:'c_agenow', label:'Age Now (days)', get:(r)=> String(daysBetween(r.cv.calving_date, todayLocal())) },
         { key:'c_note', label:'Calving Note', get:(r)=> (r.cv.notes||'').trim() },
         { key:'c_treat', label:'Calf Treatments', get:(r)=> String(calfTreatments.filter(t=> t.calving_id === r.cv.id).length) }
@@ -11126,6 +11159,8 @@
       { key:'group',label:"Group (mother's)",            type:'text', get:(r)=> r.c.cow_group },
       { key:'mseason',label:"Herd season (mother's)",    type:'text', get:(r)=> r.c.herd_season },
       { key:'mstatus',label:"Status (mother's)",         type:'text', get:(r)=> r.c.status || 'Active' },
+      { key:'bmother', label:'Born to (birth mother #)',   type:'text', get:(r)=> r.cv.grafted ? (r.cv.birth_mother || '') : '' },
+      { key:'graft', label:'Grafted? (yes/no)',            type:'text', get:(r)=> r.cv.grafted ? 'Yes' : 'No' },
       { key:'sex',  label:'Sex',                         type:'text', get:(r)=> calfSexLabel(r.cv.calf_sex) },
       { key:'assist',label:'Birth assist',               type:'text', get:(r)=> r.cv.birth_assist || 'None' },
       { key:'outcome',label:'Outcome',                   type:'text', get:(r)=> advCalfOutcome(r.cv) },
@@ -11272,7 +11307,7 @@
     advSearchBredTo:'Bred to', advSearchMethod:'Method', advSearchNaturalSire:'Natural sire', advSearchOpenOnly:'Open cows', advSearchPregBtOnly:'Preg BT', advSearchSellOnly:'Sell', advSearchPregCheck:'Preg check', advSearchNotCalved:'Not calved yet', advSearchDueWithin:'Due within', advSearchUnchecked:'Not preg-checked',
     advSearchMedicine:'Medicine', advSearchReason:'Reason', advSearchMinTimes:'Times treated', advSearchSameReason:'Same reason',
     advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight',
-    advSearchCalfSire:'Sire', advSearchCalfSex:'Sex', advSearchBirthAssist:'Birth assist', advSearchCalfOutcome:'Outcome', advSearchWeightMin:'Birth weight', advSearchWeightMax:'Birth weight',
+    advSearchCalfSire:'Sire', advSearchCalfSex:'Sex', advSearchBirthAssist:'Birth assist', advSearchCalfOutcome:'Outcome', advSearchGrafted:'Grafted', advSearchWeightMin:'Birth weight', advSearchWeightMax:'Birth weight',
     advSearchWeaned:'Weaned', advSearchWeanWtMin:'Weaning weight', advSearchWeanWtMax:'Weaning weight', advSearchGainMin:'Gain/day', advSearchGainMax:'Gain/day',
     advSearchWeanAgeMin:'Age at weaning', advSearchWeanAgeMax:'Age at weaning', advSearchWeanFrom:'Weaned dates', advSearchWeanTo:'Weaned dates',
     advSearchDateFrom:'Dates', advSearchDateTo:'Dates', advTopN:'Top N'
@@ -11465,6 +11500,7 @@
     const calfSex = document.getElementById('advSearchCalfSex').value;
     const birthAssist = document.getElementById('advSearchBirthAssist').value;
     const calfOutcome = document.getElementById('advSearchCalfOutcome').value;
+    const graftedSel = document.getElementById('advSearchGrafted').value;
     const weightMinRaw = document.getElementById('advSearchWeightMin').value;
     const weightMaxRaw = document.getElementById('advSearchWeightMax').value;
     const weightMin = weightMinRaw !== '' ? parseFloat(weightMinRaw) : null;
@@ -11498,7 +11534,7 @@
     const weightFieldsUsed = cowWtMin != null || cowWtMax != null;
     const breedingFieldsUsed = bredTo || method || naturalSire || openOnly || pregCheck;
     const medFieldsUsed = medicine || reason || minTimes != null;
-    const calvingFieldsUsed = calfSire || calfSex || birthAssist || calfOutcome || weightMin != null || weightMax != null || weaningFieldsUsed || (advMode === 'calf' && !!(dateFrom || dateTo));
+    const calvingFieldsUsed = calfSire || calfSex || birthAssist || calfOutcome || graftedSel || weightMin != null || weightMax != null || weaningFieldsUsed || (advMode === 'calf' && !!(dateFrom || dateTo));
 
     function matchingBreedingRecords(num){
       const records = breedingFor(num);
@@ -11536,6 +11572,8 @@
         if(!advSelMatch(calfSire, cv.sire)) return false;
         if(calfSex && cv.calf_sex !== calfSex) return false;
         if(birthAssist && (cv.birth_assist || 'None') !== birthAssist) return false;
+        if(graftedSel === 'yes' && !cv.grafted) return false;
+        if(graftedSel === 'no' && cv.grafted) return false;
         if(weightMin != null && !(cv.birth_weight != null && cv.birth_weight >= weightMin)) return false;
         if(weightMax != null && !(cv.birth_weight != null && cv.birth_weight <= weightMax)) return false;
         if(calfOutcome){
@@ -11775,6 +11813,7 @@
     document.getElementById('advSearchCalfSex').value = '';
     document.getElementById('advSearchBirthAssist').value = '';
     document.getElementById('advSearchCalfOutcome').value = '';
+    document.getElementById('advSearchGrafted').value = '';
     document.getElementById('advSearchWeightMin').value = '';
     document.getElementById('advSearchWeightMax').value = '';
     document.getElementById('advSearchDatePreset').value = '';

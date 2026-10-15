@@ -8488,10 +8488,12 @@
     return `<span ${style}>#${escapeHtml(num)}</span>`;
   }
   const STATUS_OPTIONS = ['Active','Sold','Deceased'];
-  // Sort tag numbers left to right, one character at a time (like a dictionary): 000, 003, 01, 02, 0603, 123, 234 ...
+  // Sort tag numbers by FIRST character, then by size within that group: 01, 02, 003, 123, 234, 369, 3001, 3102 ...
   function cowNumCmp(a, b){
     const x = String(a == null ? '' : a).toUpperCase(), y = String(b == null ? '' : b).toUpperCase();
-    return x < y ? -1 : x > y ? 1 : 0;
+    const fx = x.charAt(0), fy = y.charAt(0);
+    if(fx !== fy) return fx < fy ? -1 : 1;
+    return x.localeCompare(y, undefined, {numeric:true});
   }
   function isActiveStatus(cow){
     return !cow.status || cow.status === 'Active';

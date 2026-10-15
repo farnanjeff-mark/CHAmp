@@ -97,6 +97,10 @@
   }
   input:focus, select:focus, textarea:focus{outline:2px solid var(--pasture);outline-offset:1px;}
   input[type="date"]{padding:10px 6px;}
+  /* uniform entry boxes: same height, same side padding, same text start (dates, dropdowns, numbers, text) */
+  .field input[type="date"], .field input[type="time"]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left;padding:10px 12px;}
+  .field input[type="date"]::-webkit-date-and-time-value, .field input[type="time"]::-webkit-date-and-time-value{text-align:left;margin:0;padding:0;min-height:1.2em;}
+  .field input[type="date"], .field input[type="time"], .field input[type="text"], .field input[type="number"], .field input[type="password"], .field input[type="tel"], .field input[type="email"], .field input[type="search"], .field select{min-height:46px;line-height:1.25;box-sizing:border-box;}
   #searchBox, #calvingSearchBox, #notesSearchBox, #profileSearchBox, #weightsSearchBox, #breedingSearchBox{background:#ffffff;}
 
   .btn{
@@ -6367,7 +6371,7 @@
         </select>
       </div>
       <div class="field" style="background:#E6F1FB;border-radius:8px;padding:10px 12px;">
-        <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;">
+        <label style="display:flex;align-items:center;gap:10px;margin:0;cursor:pointer;text-transform:none;letter-spacing:0;font-size:15px;font-weight:700;color:#0C447C;">
           <input type="checkbox" id="calvGrafted" style="width:22px;height:22px;" ${isEdit && existingRecord.grafted ? 'checked' : ''}/>
           <span>Grafted calf (born to another cow)</span>
         </label>

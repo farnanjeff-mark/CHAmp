@@ -2623,7 +2623,7 @@
       sorted = [...cows].sort((a,b)=>{
         const la = latestRecordFor(a.number);
         const lb = latestRecordFor(b.number);
-        if(!la && !lb) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!la && !lb) return cowNumCmp(a.number, b.number);
         if(!la) return 1;
         if(!lb) return -1;
         const dateCmp = lb.date.localeCompare(la.date);
@@ -2631,7 +2631,7 @@
         return new Date(lb.created_at) - new Date(la.created_at);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -3768,7 +3768,7 @@
       if(alreadyCalved) return;
       entries.push({ cow, breeding: latest });
     });
-    entries.sort((a,b)=> a.cow.number.localeCompare(b.cow.number, undefined, {numeric:true}));
+    entries.sort((a,b)=> cowNumCmp(a.cow.number, b.cow.number));
     lastPregCheckEntries = entries;
     lastPregCheckDate = pickedDate;
     const tbody = document.getElementById('pregCheckReportBody');
@@ -3870,7 +3870,7 @@
         if(aDue && bDue) return aDue.localeCompare(bDue);
         if(aDue && !bDue) return -1;
         if(!aDue && bDue) return 1;
-        return a.cow.number.localeCompare(b.cow.number, undefined, {numeric:true});
+        return cowNumCmp(a.cow.number, b.cow.number);
       });
       return { location: loc, entries };
     });
@@ -3974,7 +3974,7 @@
         .filter(x=> x.calf && (!bornSince || x.calf.calving_date >= bornSince))
         .map(x=> x.cow);
     }
-    matched.sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+    matched.sort((a,b)=> cowNumCmp(a.number, b.number));
     lastFieldCountMatched = matched;
     lastFieldCountCalvesOnly = calvesOnly;
     const listEl = document.getElementById('fieldCountList');
@@ -4573,13 +4573,13 @@
       sorted = [...cows].sort((a,b)=>{
         const la = latestCalvingFor(a.number);
         const lb = latestCalvingFor(b.number);
-        if(!la && !lb) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!la && !lb) return cowNumCmp(a.number, b.number);
         if(!la) return 1;
         if(!lb) return -1;
         return lb.calving_date.localeCompare(la.calving_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -4668,7 +4668,7 @@
       sorted = [...cows].sort((a,b)=>{
         const la = latestNoteFor(a.number);
         const lb = latestNoteFor(b.number);
-        if(!la && !lb) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!la && !lb) return cowNumCmp(a.number, b.number);
         if(!la) return 1;
         if(!lb) return -1;
         return lb.note_date.localeCompare(la.note_date);
@@ -4681,10 +4681,10 @@
         if(oa && !ob) return -1;
         const ownerCmp = oa.localeCompare(ob);
         if(ownerCmp !== 0) return ownerCmp;
-        return a.number.localeCompare(b.number, undefined, {numeric:true});
+        return cowNumCmp(a.number, b.number);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -4766,13 +4766,13 @@
       sorted = [...cows].sort((a,b)=>{
         const da = mostRecentActivityDate(a.number);
         const db = mostRecentActivityDate(b.number);
-        if(!da && !db) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!da && !db) return cowNumCmp(a.number, b.number);
         if(!da) return 1;
         if(!db) return -1;
         return db.localeCompare(da);
       });
     } else {
-      sorted = [...cows].sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=>cowNumCmp(a.number, b.number));
     }
     const [filterKind, filterValue] = locGroupVal ? locGroupVal.split(/:(.*)/s) : [null, null];
     const filtered = sorted.filter(c=>{
@@ -5637,13 +5637,13 @@
       sorted = [...cows].sort((a,b)=>{
         const la = latestWeightFor(a.number);
         const lb = latestWeightFor(b.number);
-        if(!la && !lb) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!la && !lb) return cowNumCmp(a.number, b.number);
         if(!la) return 1;
         if(!lb) return -1;
         return lb.weigh_date.localeCompare(la.weigh_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -5724,13 +5724,13 @@
       sorted = [...cows].sort((a,b)=>{
         const la = latestBreedingFor(a.number);
         const lb = latestBreedingFor(b.number);
-        if(!la && !lb) return a.number.localeCompare(b.number, undefined, {numeric:true});
+        if(!la && !lb) return cowNumCmp(a.number, b.number);
         if(!la) return 1;
         if(!lb) return -1;
         return lb.breed_date.localeCompare(la.breed_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -8488,6 +8488,11 @@
     return `<span ${style}>#${escapeHtml(num)}</span>`;
   }
   const STATUS_OPTIONS = ['Active','Sold','Deceased'];
+  // Sort tag numbers left to right, one character at a time (like a dictionary): 000, 003, 01, 02, 0603, 123, 234 ...
+  function cowNumCmp(a, b){
+    const x = String(a == null ? '' : a).toUpperCase(), y = String(b == null ? '' : b).toUpperCase();
+    return x < y ? -1 : x > y ? 1 : 0;
+  }
   function isActiveStatus(cow){
     return !cow.status || cow.status === 'Active';
   }
@@ -11213,9 +11218,14 @@
   function advSortItems(items, mode){
     const sels = advSortSelections(mode);
     const numDef = ADV_SORTS[mode].find(d=> d.key === 'num');
-    const cmpNum = (a,b)=> a.r.c.number.localeCompare(b.r.c.number, undefined, {numeric:true});
+    const cmpNum = (a,b)=> cowNumCmp(a.r.c.number, b.r.c.number);
     return items.slice().sort((a,b)=>{
       for(const sel of sels){
+        if(sel.def.key === 'num'){
+          const cn = cowNumCmp(a.r.c.number, b.r.c.number);
+          if(cn !== 0) return sel.desc ? -cn : cn;
+          continue;
+        }
         const va = sel.def.get(a.r, a.x), vb = sel.def.get(b.r, b.x);
         const ba = advIsBlank(va), bb = advIsBlank(vb);
         if(ba && bb) continue;
@@ -11676,7 +11686,7 @@
       if(calvingFieldsUsed && matchingCalvingRecords(c.number).length === 0) return false;
       if(!breedingFieldsUsed && !medFieldsUsed && !calvingFieldsUsed && !weightFieldsUsed && (dateFrom || dateTo) && !cowHasActivityInDateRange(c.number, dateFrom, dateTo)) return false;
       return true;
-    }).sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+    }).sort((a,b)=> cowNumCmp(a.number, b.number));
 
 
     advHasRun = true;
@@ -13499,7 +13509,7 @@
     }
 
     matches.sort((a,b)=>{
-      if(!a.date && !b.date) return a.num.localeCompare(b.num, undefined, {numeric:true});
+      if(!a.date && !b.date) return cowNumCmp(a.num, b.num);
       if(!a.date) return 1;
       if(!b.date) return -1;
       return b.date.localeCompare(a.date);
@@ -13717,7 +13727,7 @@
         const gain = Number(last.weight) - Number(prev.weight);
         out.push({ cow, prev, last, days, gain, adg: gain/days });
       });
-      out.sort((a,b)=> (b.adg - a.adg) || a.cow.number.localeCompare(b.cow.number, undefined, {numeric:true}));
+      out.sort((a,b)=> (b.adg - a.adg) || cowNumCmp(a.cow.number, b.cow.number));
       const bits = [];
       if(from || to) bits.push('Latest weighing between ' + (from ? fmtDateShort(from) : 'start') + ' and ' + (to ? fmtDateShort(to) : 'now'));
       else bits.push('Latest two weighings');
@@ -13871,7 +13881,7 @@
         if(!a.last && b.last) return -1;
         if(a.last && !b.last) return 1;
         if(a.last && b.last && a.days !== b.days) return b.days - a.days;
-        return a.cow.number.localeCompare(b.cow.number, undefined, {numeric:true});
+        return cowNumCmp(a.cow.number, b.cow.number);
       });
       const bits = [];
       if(span === 'never') bits.push('No entries ever');
@@ -14192,7 +14202,7 @@
   }
 
   function calvedReportModal(){
-    const list = cows.filter(c=> isActiveStatus(c) && c.calved).sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+    const list = cows.filter(c=> isActiveStatus(c) && c.calved).sort((a,b)=>cowNumCmp(a.number, b.number));
     const rows = list.map((c,i)=>{
       const latest = [...breedingFor(c.number)].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
       const bredTo = latest ? (latest.bred_to || latest.natural_sire || '') : '';
@@ -14202,7 +14212,7 @@
   }
 
   function soldDeceasedModal(){
-    const list = cows.filter(c=> c.status && c.status !== 'Active').sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+    const list = cows.filter(c=> c.status && c.status !== 'Active').sort((a,b)=>cowNumCmp(a.number, b.number));
     const rows = list.map((c,i)=>`<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">#${escapeHtml(c.number)}</td><td style="padding:8px;">${escapeHtml(c.status)}</td><td style="padding:8px;">${escapeHtml(c.lot||'')}</td><td style="padding:8px;">${escapeHtml(c.owner||'')}</td></tr>`).join('');
     reportCardModal('Sold / Deceased List', list, ['Cow #','Status','Location','Owner'], rows, soldDeceasedModal, 'Every cow whose status is set to Sold or Deceased.');
   }
@@ -15080,11 +15090,11 @@
       entries = list.map(n=> ({ id: n.id, line: `#${n.cow_number} — ${fmtDateShort(n.note_date)} — ${n.note||''}` }));
     } else if(category === 'tagneeded'){
       title = 'Tag Needed';
-      const list = cows.filter(c=>c.tag_needed).sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+      const list = cows.filter(c=>c.tag_needed).sort((a,b)=>cowNumCmp(a.number, b.number));
       entries = list.map(c=> ({ id: c.number, line: `#${c.number}${c.lot ? ' — '+c.lot : ''}` }));
     } else if(category === 'calved'){
       title = 'Calved';
-      const list = cows.filter(c=>c.calved).sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+      const list = cows.filter(c=>c.calved).sort((a,b)=>cowNumCmp(a.number, b.number));
       entries = list.map(c=> ({ id: c.number, line: `#${c.number}${c.lot ? ' — '+c.lot : ''}` }));
     }
     return { title, entries };
@@ -15226,7 +15236,7 @@
 
   function buildMedsRows(){
     const header = ['Cow Number','Location','Owner','Date','Medicine','Reason','Notes'];
-    const rows = [...treatments].sort((a,b)=> a.cow_number.localeCompare(b.cow_number, undefined, {numeric:true}) || b.date.localeCompare(a.date)).map(t=>{
+    const rows = [...treatments].sort((a,b)=> cowNumCmp(a.cow_number, b.cow_number) || b.date.localeCompare(a.date)).map(t=>{
       const cow = cows.find(c=>c.number===t.cow_number) || {};
       return [t.cow_number, cow.lot||'', cow.owner||'', t.date, t.medicine||'', t.reason||'', t.notes||''];
     });
@@ -15234,7 +15244,7 @@
   }
   function buildCalvingRows(){
     const header = ['Cow Number','Location','Owner','Calving Date','Calf Sex','Birth Weight','Sire','Birth Assist','Outcome','Notes'];
-    const rows = [...calvings].sort((a,b)=> a.cow_number.localeCompare(b.cow_number, undefined, {numeric:true}) || b.calving_date.localeCompare(a.calving_date)).map(c=>{
+    const rows = [...calvings].sort((a,b)=> cowNumCmp(a.cow_number, b.cow_number) || b.calving_date.localeCompare(a.calving_date)).map(c=>{
       const cow = cows.find(x=>x.number===c.cow_number) || {};
       const outcome = c.promoted_to_cow_number ? `Kept (#${c.promoted_to_cow_number})` : (c.calf_outcome || 'Active');
       return [c.cow_number, cow.lot||'', cow.owner||'', c.calving_date, calfSexLabel(c.calf_sex), c.birth_weight!=null?c.birth_weight:'', c.sire||'', c.birth_assist||'', outcome, c.notes||''];
@@ -15243,7 +15253,7 @@
   }
   function buildNotesRows(){
     const header = ['Cow Number','Location','Owner','Date','Note'];
-    const rows = [...generalNotes].sort((a,b)=> a.cow_number.localeCompare(b.cow_number, undefined, {numeric:true}) || b.note_date.localeCompare(a.note_date)).map(n=>{
+    const rows = [...generalNotes].sort((a,b)=> cowNumCmp(a.cow_number, b.cow_number) || b.note_date.localeCompare(a.note_date)).map(n=>{
       const cow = cows.find(c=>c.number===n.cow_number) || {};
       return [n.cow_number, cow.lot||'', cow.owner||'', n.note_date, n.note||''];
     });
@@ -15251,7 +15261,7 @@
   }
   function buildWeightsRows(){
     const header = ['Cow Number','Location','Owner','Date','Weight (lbs)','Notes'];
-    const rows = [...weights].sort((a,b)=> a.cow_number.localeCompare(b.cow_number, undefined, {numeric:true}) || b.weigh_date.localeCompare(a.weigh_date)).map(w=>{
+    const rows = [...weights].sort((a,b)=> cowNumCmp(a.cow_number, b.cow_number) || b.weigh_date.localeCompare(a.weigh_date)).map(w=>{
       const cow = cows.find(c=>c.number===w.cow_number) || {};
       return [w.cow_number, cow.lot||'', cow.owner||'', w.weigh_date, w.weight!=null?w.weight:'', w.notes||''];
     });
@@ -15259,7 +15269,7 @@
   }
   function buildBreedingRows(){
     const header = ['Cow Number','Location','Owner','Date','Bred To','Method','Natural Sire','Vet Calls','Due Date','Status','Open Date','Notes'];
-    const rows = [...breedingRecords].sort((a,b)=> a.cow_number.localeCompare(b.cow_number, undefined, {numeric:true}) || b.breed_date.localeCompare(a.breed_date)).map(b=>{
+    const rows = [...breedingRecords].sort((a,b)=> cowNumCmp(a.cow_number, b.cow_number) || b.breed_date.localeCompare(a.breed_date)).map(b=>{
       const cow = cows.find(c=>c.number===b.cow_number) || {};
       return [b.cow_number, cow.lot||'', cow.owner||'', b.breed_date, b.bred_to||'', b.pregnancy_method||'', b.natural_sire||'', b.vet_calls||'', b.expected_due_date||'', b.pregnancy_status||'', b.open_date||'', b.notes||''];
     });
@@ -15309,7 +15319,7 @@
     const rows = [...calfTreatments].map(t=>{
       const cv = calvings.find(c=>c.id===t.calving_id) || {};
       return { cowNum: cv.cow_number||'', row: [cv.cow_number||'', cv.calving_date||'', t.date, t.medicine||'', t.reason||'', t.notes||''] };
-    }).sort((a,b)=> a.cowNum.localeCompare(b.cowNum, undefined, {numeric:true}) || b.row[2].localeCompare(a.row[2])).map(x=>x.row);
+    }).sort((a,b)=> cowNumCmp(a.cowNum, b.cowNum) || b.row[2].localeCompare(a.row[2])).map(x=>x.row);
     return { header, rows };
   }
   function buildCalfWeightsRows(){
@@ -15317,7 +15327,7 @@
     const rows = [...calfWeights].map(w=>{
       const cv = calvings.find(c=>c.id===w.calving_id) || {};
       return { cowNum: cv.cow_number||'', row: [cv.cow_number||'', cv.calving_date||'', w.weigh_date, w.weight!=null?w.weight:'', w.notes||''] };
-    }).sort((a,b)=> a.cowNum.localeCompare(b.cowNum, undefined, {numeric:true}) || b.row[2].localeCompare(a.row[2])).map(x=>x.row);
+    }).sort((a,b)=> cowNumCmp(a.cowNum, b.cowNum) || b.row[2].localeCompare(a.row[2])).map(x=>x.row);
     return { header, rows };
   }
   function buildReferenceListsRows(){
@@ -15385,7 +15395,7 @@
       // each one as its own row together. Placed first since it's the
       // most useful "everything about this cow" view.
       const allInfoRows = [];
-      const sortedCowsForAllInfo = [...cows].sort((a,b)=> a.number.localeCompare(b.number, undefined, {numeric:true}));
+      const sortedCowsForAllInfo = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
       sortedCowsForAllInfo.forEach(cow=>{
         const entries = [];
         recordsFor(cow.number).forEach(r=>{
@@ -15653,7 +15663,7 @@
       showQuickAction([exact]);
       return;
     }
-    const partial = cows.filter(c=>c.number.toLowerCase().includes(q)).sort((a,b)=>a.number.localeCompare(b.number, undefined, {numeric:true}));
+    const partial = cows.filter(c=>c.number.toLowerCase().includes(q)).sort((a,b)=>cowNumCmp(a.number, b.number));
     if(partial.length === 0){
       showToast(`No cow found matching "${q}"`);
     } else {

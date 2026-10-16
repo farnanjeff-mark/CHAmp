@@ -2489,18 +2489,26 @@
     return match ? parseInt(match[0], 10) : null;
   }
   // A cow whose vet check doesn't fit her breeding date (more than 10 days off) was not settled by that breeding, so a bull got her later.
-  // AI and ET dates are exact, so those are never second-guessed. This only changes what is shown; the saved record is untouched.
-  function isBullBred(b){
-    if(!b || b.pregnancy_status === 'Open') return false;
-    if(b.pregnancy_method === 'AI' || b.pregnancy_method === 'ET') return false;
-    const days = parseDaysAlongFromVetCalls(b.vet_calls);
-    if(days == null || !b.vet_call_date || !b.breed_date) return false;
-    const conceived = new Date(b.vet_call_date+'T00:00:00');
+  // AI and ET dates are exact, so those are never second-guessed.
+  function vetMismatch(breedDate, vetCallsText, vetCallDate, method){
+    if(method === 'AI' || method === 'ET') return false;
+    const days = parseDaysAlongFromVetCalls(vetCallsText);
+    if(days == null || !vetCallDate || !breedDate) return false;
+    const conceived = new Date(vetCallDate+'T00:00:00');
     conceived.setDate(conceived.getDate() - days);
-    const diff = Math.round((conceived - new Date(b.breed_date+'T00:00:00')) / 86400000);
+    const diff = Math.round((conceived - new Date(breedDate+'T00:00:00')) / 86400000);
     return Math.abs(diff) > 10;
   }
-  function bredToText(b){ return isBullBred(b) ? 'Bull Bred' : ((b && (b.bred_to || b.natural_sire)) || ''); }
+  // When a vet check is saved and doesn't fit the breeding date, the cow is marked BB (natural breeding). AI and ET stay as they are.
+  function methodAfterVetCheck(method, breedDate, vetCallsText){
+    return vetMismatch(breedDate, vetCallsText, todayLocal(), method) ? 'BB' : method;
+  }
+  // What the "Bred To" column shows: BB cows show BB and their natural sires; everyone else shows the sire as before.
+  function bredToText(b){
+    if(!b) return '';
+    if(b.pregnancy_method === 'BB') return b.natural_sire ? 'BB \u2014 ' + b.natural_sire : 'BB';
+    return b.bred_to || b.natural_sire || '';
+  }
   function resolveExpectedDueDate(breedDate, vetCallsText, method){
     const breedBased = computeDueDate(breedDate, method);
     const daysAlong = parseDaysAlongFromVetCalls(vetCallsText);
@@ -5305,7 +5313,7 @@
       const body = {
         breed_date: dateVal,
         bred_to: bredTo||null,
-        pregnancy_method: method||null,
+        pregnancy_method: methodAfterVetCheck(method, dateVal, vet)||null,
         natural_sire: sire||null,
         vet_calls: vet||null,
         expected_due_date: resolved.dueDate,
@@ -5472,7 +5480,7 @@
     const calf = latestActiveCalfFor(num);
     let html = '';
     html += row('Last weight', w ? Number(w.weight).toLocaleString() + ' lbs' : none, w ? fmtDateShort(w.weigh_date) : '&nbsp;', '+ Weight', 'weights');
-    html += row('Bred to', br ? escapeHtml(bredToText(br) || 'Unknown') : none, br ? escapeHtml((isBullBred(br) && br.bred_to ? 'Was ' + br.bred_to + ' · ' : (br.pregnancy_method ? br.pregnancy_method + ' · ' : '')) + fmtDateShort(br.breed_date)) : '&nbsp;', '+ Breeding', 'breeding');
+    html += row('Bred to', br ? escapeHtml(bredToText(br) || 'Unknown') : none, br ? escapeHtml((br.pregnancy_method ? br.pregnancy_method + ' · ' : '') + fmtDateShort(br.breed_date)) : '&nbsp;', '+ Breeding', 'breeding');
     html += row('Last calving', cv ? escapeHtml(calfSexLabel(cv.calf_sex)) + ' calf' : none, cv ? escapeHtml(fmtDateShort(cv.calving_date) + (cv.birth_weight != null ? ' · ' + cv.birth_weight + ' lbs' : '')) : '&nbsp;', '+ Calving', 'calving');
     html += row('Last med', m ? escapeHtml(m.medicine) : none, m ? escapeHtml(fmtDateShort(m.date) + (m.reason ? ' · ' + m.reason : '')) : '&nbsp;', '+ Med', 'meds');
     html += row('Last note', nt ? escapeHtml(nt.note || '') : none, nt ? fmtDateShort(nt.note_date) : '&nbsp;', '+ Note', 'notes');
@@ -5614,7 +5622,6 @@
       : breedingRecs.map(r=>{
           const details = [];
           if(r.bred_to) details.push(`Bred to: ${escapeHtml(r.bred_to)}`);
-          if(isBullBred(r)) details.push('Vet check says: Bull Bred');
           if(r.pregnancy_method) details.push(escapeHtml(r.pregnancy_method));
           if(r.natural_sire) details.push(`Natural sire: ${escapeHtml(r.natural_sire)}`);
           return `<div class="record has-tools"${r.pregnancy_status==='Open' ? ' style="border-left-color:#7A2E27;"' : ''}>
@@ -5787,7 +5794,6 @@
       div.className = 'record';
       const details = [];
       if(r.bred_to) details.push(`Bred to: ${escapeHtml(r.bred_to)}`);
-      if(isBullBred(r)) details.push('Vet check says: Bull Bred');
       if(r.pregnancy_method) details.push(escapeHtml(r.pregnancy_method));
       if(r.natural_sire) details.push(`Natural sire: ${escapeHtml(r.natural_sire)}`);
       div.innerHTML = `
@@ -7685,7 +7691,7 @@
         body = {
           breed_date: dateVal,
           bred_to: bredTo||null,
-          pregnancy_method: method||null,
+          pregnancy_method: methodAfterVetCheck(method, dateVal, vet)||null,
           natural_sire: sire||null,
           vet_calls: vet||null,
           notes: notes||null,
@@ -7882,7 +7888,8 @@
       ? { dueDate: computeDueDate(latest.breed_date, methodVal), usedVetCheck: false, diffDays: 0 }
       : resolveExpectedDueDate(latest.breed_date, daysAlongVal, methodVal);
     const body = { vet_calls: daysAlongVal, expected_due_date: resolved.dueDate, pregnancy_status: 'Bred', vet_call_date: todayLocal() };
-    if(methodVal) body.pregnancy_method = methodVal;
+    const finalMethod = methodAfterVetCheck(methodVal, latest.breed_date, String(daysAlongVal));
+    if(finalMethod) body.pregnancy_method = finalMethod;
     try{
       const updated = await api('/breeding_records?id=eq.' + encodeURIComponent(latest.id), {
         method:'PATCH',
@@ -11080,7 +11087,7 @@
       ]},
       { id:'breeding', label:'Breeding (latest record)', cols:[
         { key:'b_date', label:'Breed Date', get:(r,x)=> x.br ? advFmtD(x.br.breed_date) : '' },
-        { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? (isBullBred(x.br) ? 'Bull Bred' : (x.br.bred_to || '')) : '' },
+        { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? bredToText(x.br) : '' },
         { key:'b_nat', label:'Natural Sire', get:(r,x)=> x.br ? (x.br.natural_sire || '') : '' },
         { key:'b_method', label:'Method', get:(r,x)=> x.br ? (x.br.pregnancy_method || '') : '' },
         { key:'b_check', label:'Preg Check', get:(r,x)=> !x.br ? '' : (x.br.pregnancy_status === 'Open' ? 'Open' : x.br.pregnancy_status === 'Bred' ? 'Bred (preg)' : 'Not checked') },
@@ -12519,7 +12526,7 @@
       const out = calved ? 'Calved' : b.pregnancy_status === 'Bred' ? 'Pregnant' : b.pregnancy_status === 'Open' ? 'Open' : 'Not checked';
       const m = b.pregnancy_method;
       const method = m === 'AI' ? 'AI' : m === 'ET' ? 'ET' : m === 'BB' ? 'Natural (BB)' : 'Unknown';
-      const sire = (isBullBred(b) ? 'Bull Bred' : (m === 'BB' ? (b.natural_sire || b.bred_to) : (b.bred_to || b.natural_sire))) || '(none)';
+      const sire = (m === 'BB' ? (b.natural_sire || b.bred_to) : (b.bred_to || b.natural_sire)) || '(none)';
       return { b, c, out, method, sire };
     });
     const cnt = (arr, o)=> arr.filter(x=> x.out === o).length;

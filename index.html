@@ -8944,17 +8944,37 @@
     }
     const latestBreeding = [...breedingFor(num)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
     if(latestBreeding){
-      const parts = [];
-      if(bredToText(latestBreeding)) parts.push(`Bred to: ${bredToText(latestBreeding)}`);
-      else if(latestBreeding.pregnancy_status === 'Open') parts.push('Open');
-      if(latestBreeding.notes) parts.push(latestBreeding.notes);
-      const detail = parts.join(', ');
-      lines.push(`<span style="color:#8a8163;">Last breeding:</span> ${fmtDateShort(latestBreeding.breed_date)}${detail ? ' — '+truncateText(detail) : ''}`);
-      if(latestBreeding.vet_call_date){
-        lines.push(`<span style="color:#8a8163;">Vet call:</span> ${fmtDateShort(latestBreeding.vet_call_date)}${latestBreeding.vet_calls ? ' — '+escapeHtml(latestBreeding.vet_calls)+' days' : ''}`);
+      const lb = latestBreeding;
+      const method = (lb.pregnancy_method || '').trim();
+      const isOpenNow = lb.pregnancy_status === 'Open';
+      // Is the vet call off from the breeding date? (checked for every method, AI and ET included)
+      const vetIsOff = !isOpenNow && (method === 'BB' || vetMismatch(lb.breed_date, lb.vet_calls, lb.vet_call_date, null));
+      const hasDays = !isOpenNow && parseDaysAlongFromVetCalls(lb.vet_calls) != null;
+      // Newest line on top, first event (the breeding) last
+      if(vetIsOff && lb.natural_sire){
+        lines.push(`<span style="color:#A32D2D;font-weight:700;">BB by: ${escapeHtml(lb.natural_sire)} (natural sire)</span>`);
       }
-      if(latestBreeding.expected_due_date && latestBreeding.pregnancy_status !== 'Open'){
-        lines.push(`<span style="color:#8a8163;">Expected calving:</span> ${fmtDateShort(latestBreeding.expected_due_date)}`);
+      if(lb.vet_call_date){
+        let vetText = `<span style="color:#8a8163;">Vet call:</span> ${fmtDateShort(lb.vet_call_date)}`;
+        if(isOpenNow) vetText += ' — Open';
+        else {
+          if(lb.vet_calls) vetText += ' — '+escapeHtml(lb.vet_calls)+' days';
+          if(hasDays || method === 'BB') vetText += vetIsOff
+            ? ' — <b style="color:#A32D2D;">OFF</b>'
+            : ' — <b style="color:#2E7D32;">Consistent</b>';
+          if(method) vetText += ' — '+escapeHtml(method);
+        }
+        lines.push(vetText);
+      }
+      const bredBull = lb.bred_to || lb.natural_sire || '';
+      const bredParts = [];
+      if(bredBull) bredParts.push(escapeHtml(bredBull));
+      if(method) bredParts.push(escapeHtml(method));
+      if(!bredBull && isOpenNow) bredParts.push('Open');
+      if(lb.notes) bredParts.push(escapeHtml(truncateText(lb.notes)));
+      lines.push(`<span style="color:#8a8163;">Bred:</span> ${fmtDateShort(lb.breed_date)}${bredParts.length ? ' — '+bredParts.join(' — ') : ''}`);
+      if(lb.expected_due_date && !isOpenNow){
+        lines.push(`<span style="color:#8a8163;">Expected calving:</span> ${fmtDateShort(lb.expected_due_date)}`);
       }
     }
     const latestNote = [...generalNotesFor(num)].sort((a,b)=>b.note_date.localeCompare(a.note_date))[0];

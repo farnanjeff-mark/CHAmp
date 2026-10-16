@@ -14669,7 +14669,7 @@
       const daysUntilHtml = daysUntil < 0
         ? `<span style="color:var(--barn);font-weight:700;">${daysUntil}</span>`
         : daysUntil;
-      return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">#${escapeHtml(e.cow.number)}</td><td style="padding:8px;">${fmtDateShort(e.breeding.expected_due_date)}</td><td style="padding:8px;">${daysUntilHtml}</td><td style="padding:8px;">${escapeHtml(e.breeding.bred_to||'')}</td><td style="padding:8px;">${escapeHtml(e.breeding.pregnancy_method||'')}</td></tr>`;
+      return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">#${escapeHtml(e.cow.number)}</td><td style="padding:8px;">${fmtDateShort(e.breeding.expected_due_date)}</td><td style="padding:8px;">${daysUntilHtml}</td><td style="padding:8px;">${escapeHtml(bredToText(e.breeding))}</td><td style="padding:8px;">${escapeHtml(e.breeding.pregnancy_method||'')}</td></tr>`;
     }).join('');
     reportCardModal('Due Soon (Next 14 Days)', entries.map(e=>e.cow), ['Cow #','Due Date','Days Until','Bred To','Method'], rows, dueSoonModal, 'Active, bred cows due to calve within 14 days, based on each cow\'s expected due date.');
   }

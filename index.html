@@ -3734,7 +3734,6 @@
     fabAddEquipment.classList.add('hidden');
     quickActionView.classList.add('hidden');
     populateFieldCountFilters();
-    fieldCountChecked.clear();
     renderFieldCountList();
     window.scrollTo(0,0);
   }
@@ -3969,7 +3968,15 @@
     document.body.classList.add('printing-list');
     requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
   }
+  const FIELD_COUNT_STORE_KEY = 'champ_field_count_checked_v1';
   let fieldCountChecked = new Set();
+  try{
+    const savedChecks = JSON.parse(localStorage.getItem(FIELD_COUNT_STORE_KEY) || '[]');
+    if(Array.isArray(savedChecks)) fieldCountChecked = new Set(savedChecks);
+  }catch(e){}
+  function saveFieldCountChecked(){
+    try{ localStorage.setItem(FIELD_COUNT_STORE_KEY, JSON.stringify([...fieldCountChecked])); }catch(e){}
+  }
   function populateFieldCountFilters(){
     const locSel = document.getElementById('fieldCountLocationFilter');
     const grpSel = document.getElementById('fieldCountGroupFilter');
@@ -4018,11 +4025,12 @@
       row.addEventListener('click', ()=>{
         if(fieldCountChecked.has(cow.number)) fieldCountChecked.delete(cow.number);
         else fieldCountChecked.add(cow.number);
+        saveFieldCountChecked();
         renderFieldCountList();
       });
       listEl.appendChild(row);
     });
-    document.getElementById('fieldCountTally').textContent = `${fieldCountChecked.size} of ${matched.length} checked`;
+    document.getElementById('fieldCountTally').textContent = `${matched.filter(c=>fieldCountChecked.has(c.number)).length} of ${matched.length} checked`;
   }
   function printFieldCount(){
     if(lastFieldCountMatched.length === 0){ showToast('Nothing to print'); return; }
@@ -4068,11 +4076,11 @@
   document.getElementById('vetCallReportDate').addEventListener('change', ()=> runWithBusyBanner('Building report…', 'Still building the report — this is taking longer than usual.', renderVetCallReport));
   document.getElementById('vetCallReportPrintBtn').addEventListener('click', printVetCallReport);
   document.getElementById('fieldCountHomeBtn').addEventListener('click', showHome);
-  document.getElementById('fieldCountLocationFilter').addEventListener('change', ()=>{ fieldCountChecked.clear(); renderFieldCountList(); });
-  document.getElementById('fieldCountGroupFilter').addEventListener('change', ()=>{ fieldCountChecked.clear(); renderFieldCountList(); });
-  document.getElementById('fieldCountCalvesOnly').addEventListener('change', ()=>{ fieldCountChecked.clear(); renderFieldCountList(); });
-  document.getElementById('fieldCountBornSince').addEventListener('change', ()=>{ fieldCountChecked.clear(); renderFieldCountList(); });
-  document.getElementById('fieldCountClearBtn').addEventListener('click', ()=>{ fieldCountChecked.clear(); renderFieldCountList(); });
+  document.getElementById('fieldCountLocationFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
+  document.getElementById('fieldCountGroupFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
+  document.getElementById('fieldCountCalvesOnly').addEventListener('change', ()=>{ renderFieldCountList(); });
+  document.getElementById('fieldCountBornSince').addEventListener('change', ()=>{ renderFieldCountList(); });
+  document.getElementById('fieldCountClearBtn').addEventListener('click', ()=>{ fieldCountChecked.clear(); saveFieldCountChecked(); renderFieldCountList(); });
   document.getElementById('fieldCountPrintBtn').addEventListener('click', printFieldCount);
   function showFarmOperations(){
     setHeaderTitle('Farm', 'Operations');

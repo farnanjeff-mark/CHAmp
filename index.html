@@ -8947,8 +8947,8 @@
       const lb = latestBreeding;
       const method = (lb.pregnancy_method || '').trim();
       const isOpenNow = lb.pregnancy_status === 'Open';
-      // Is the vet call off from the breeding date? (checked for every method, AI and ET included)
-      const vetIsOff = !isOpenNow && (method === 'BB' || vetMismatch(lb.breed_date, lb.vet_calls, lb.vet_call_date, null));
+      // Off = vet days more than 10 from the breeding date (checked for every method, AI and ET included). A BB mark alone is not "off".
+      const vetIsOff = !isOpenNow && vetMismatch(lb.breed_date, lb.vet_calls, lb.vet_call_date, null);
       const hasDays = !isOpenNow && parseDaysAlongFromVetCalls(lb.vet_calls) != null;
       // Newest line on top, first event (the breeding) last
       const showBBBy = !!(vetIsOff && lb.natural_sire);
@@ -8967,7 +8967,7 @@
         else {
           if(lb.vet_calls) vetText += ' — '+escapeHtml(lb.vet_calls)+' days';
           if(vetIsOff && hasDays && shouldBeDays != null) vetText += ` (should be ${shouldBeDays})`;
-          if(hasDays || method === 'BB') vetText += vetIsOff
+          if(hasDays) vetText += vetIsOff
             ? ' — <b style="color:#A32D2D;">OFF</b>'
             : ' — <b style="color:#2E7D32;">Consistent</b>';
           // BB is dropped here when the red "BB by" line already says it

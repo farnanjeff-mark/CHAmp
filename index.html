@@ -12679,6 +12679,8 @@
     if(st.guided){ gsRunSaved(st); return; }
     const mode = (st.mode === 'calf' || r.report_type === 'calf_search') ? 'calf' : 'cow';
     if(advMode !== mode) setAdvPage(mode);
+    // fill the dropdowns with the herd's choices first, so saved choices (group, owner, location, bull...) can be found on a freshly opened app
+    try{ populateAdvancedSearchDropdowns(); }catch(e){}
     clearAdvancedSearch();
     const valid = advAllCols(mode).map(c=>c.key);
     if(Array.isArray(st.cols)) advCols[mode] = st.cols.filter(k=> valid.includes(k));

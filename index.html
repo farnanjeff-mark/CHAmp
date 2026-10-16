@@ -8951,7 +8951,14 @@
       const vetIsOff = !isOpenNow && (method === 'BB' || vetMismatch(lb.breed_date, lb.vet_calls, lb.vet_call_date, null));
       const hasDays = !isOpenNow && parseDaysAlongFromVetCalls(lb.vet_calls) != null;
       // Newest line on top, first event (the breeding) last
-      if(vetIsOff && lb.natural_sire){
+      const showBBBy = !!(vetIsOff && lb.natural_sire);
+      // Days she should be along on the vet call date if the breeding date were right
+      let shouldBeDays = null;
+      if(lb.vet_call_date && lb.breed_date){
+        shouldBeDays = Math.round((new Date(lb.vet_call_date+'T00:00:00') - new Date(lb.breed_date+'T00:00:00')) / 86400000);
+        if(!(shouldBeDays >= 0)) shouldBeDays = null;
+      }
+      if(showBBBy){
         lines.push(`<span style="color:#A32D2D;font-weight:700;">BB by: ${escapeHtml(lb.natural_sire)} (natural sire)</span>`);
       }
       if(lb.vet_call_date){
@@ -8959,17 +8966,19 @@
         if(isOpenNow) vetText += ' — Open';
         else {
           if(lb.vet_calls) vetText += ' — '+escapeHtml(lb.vet_calls)+' days';
+          if(vetIsOff && hasDays && shouldBeDays != null) vetText += ` (should be ${shouldBeDays})`;
           if(hasDays || method === 'BB') vetText += vetIsOff
             ? ' — <b style="color:#A32D2D;">OFF</b>'
             : ' — <b style="color:#2E7D32;">Consistent</b>';
-          if(method) vetText += ' — '+escapeHtml(method);
+          // BB is dropped here when the red "BB by" line already says it
+          if(method && !(method === 'BB' && showBBBy)) vetText += ' — '+escapeHtml(method);
         }
         lines.push(vetText);
       }
       const bredBull = lb.bred_to || lb.natural_sire || '';
       const bredParts = [];
       if(bredBull) bredParts.push(escapeHtml(bredBull));
-      if(method) bredParts.push(escapeHtml(method));
+      if(method && method !== 'BB') bredParts.push(escapeHtml(method));
       if(!bredBull && isOpenNow) bredParts.push('Open');
       if(lb.notes) bredParts.push(escapeHtml(truncateText(lb.notes)));
       lines.push(`<span style="color:#8a8163;">Bred:</span> ${fmtDateShort(lb.breed_date)}${bredParts.length ? ' — '+bredParts.join(' — ') : ''}`);

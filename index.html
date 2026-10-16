@@ -2488,6 +2488,19 @@
     const match = text.match(/\d+/);
     return match ? parseInt(match[0], 10) : null;
   }
+  // A cow whose vet check doesn't fit her breeding date (more than 10 days off) was not settled by that breeding, so a bull got her later.
+  // AI and ET dates are exact, so those are never second-guessed. This only changes what is shown; the saved record is untouched.
+  function isBullBred(b){
+    if(!b || b.pregnancy_status === 'Open') return false;
+    if(b.pregnancy_method === 'AI' || b.pregnancy_method === 'ET') return false;
+    const days = parseDaysAlongFromVetCalls(b.vet_calls);
+    if(days == null || !b.vet_call_date || !b.breed_date) return false;
+    const conceived = new Date(b.vet_call_date+'T00:00:00');
+    conceived.setDate(conceived.getDate() - days);
+    const diff = Math.round((conceived - new Date(b.breed_date+'T00:00:00')) / 86400000);
+    return Math.abs(diff) > 10;
+  }
+  function bredToText(b){ return isBullBred(b) ? 'Bull Bred' : ((b && (b.bred_to || b.natural_sire)) || ''); }
   function resolveExpectedDueDate(breedDate, vetCallsText, method){
     const breedBased = computeDueDate(breedDate, method);
     const daysAlong = parseDaysAlongFromVetCalls(vetCallsText);
@@ -3778,7 +3791,7 @@
     tbody.innerHTML = entries.map((e,i)=>{
       const breedMs = new Date(e.breeding.breed_date+'T00:00:00').getTime();
       const daysBred = Math.round((pickedMs - breedMs) / 86400000);
-      const sire = e.breeding.bred_to || e.breeding.natural_sire || '';
+      const sire = bredToText(e.breeding);
       return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};">
         <td style="padding:8px 10px;font-weight:700;">#${escapeHtml(e.cow.number)}</td>
         <td style="padding:8px 10px;">${escapeHtml(sire)}</td>
@@ -3793,7 +3806,7 @@
     const rowsHtml = lastPregCheckEntries.map((e,i)=>{
       const breedMs = new Date(e.breeding.breed_date+'T00:00:00').getTime();
       const daysBred = Math.round((pickedMs - breedMs) / 86400000);
-      const sire = e.breeding.bred_to || e.breeding.natural_sire || '';
+      const sire = bredToText(e.breeding);
       return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};">
         <td style="padding:6px;">#${escapeHtml(e.cow.number)}</td>
         <td style="padding:6px;">${escapeHtml(sire)}</td>
@@ -3900,7 +3913,7 @@
         </thead>
         <tbody>
           ${g.entries.map((e,i)=>{
-            const sire = e.breeding.bred_to || e.breeding.natural_sire || '';
+            const sire = bredToText(e.breeding);
             const vetCall = e.breeding.pregnancy_status === 'Open' ? 'Open' : (e.breeding.vet_calls || '');
             return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};">
               <td style="padding:6px;font-weight:700;">#${escapeHtml(e.cow.number)}</td>
@@ -3924,7 +3937,7 @@
         <thead><tr><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Cow #</th><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Sire</th><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Method</th><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Breed Date</th><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Vet Call</th><th style="text-align:left;padding:6px;border-bottom:2px solid #000;">Due Date</th></tr></thead>
         <tbody>
           ${g.entries.map((e,i)=>{
-            const sire = e.breeding.bred_to || e.breeding.natural_sire || '';
+            const sire = bredToText(e.breeding);
             const vetCall = e.breeding.pregnancy_status === 'Open' ? 'Open' : (e.breeding.vet_calls || '');
             return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};">
               <td style="padding:6px;">#${escapeHtml(e.cow.number)}</td>
@@ -4938,7 +4951,7 @@
       }
       if(opts.breeding){
         const latest = [...breedingFor(cow.number)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
-        if(latest) parts.push(`Breeding: ${fmtDate(latest.breed_date)}${latest.bred_to ? ' — '+latest.bred_to : ''}`);
+        if(latest) parts.push(`Breeding: ${fmtDate(latest.breed_date)}${bredToText(latest) ? ' — '+bredToText(latest) : ''}`);
       }
       const meta = [cow.lot, cow.owner].filter(Boolean).join(' · ');
       return `
@@ -5039,7 +5052,7 @@
         cowList.forEach(cow=>{
           const latest = [...breedingFor(cow.number)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
           if(!latest) return;
-          ws.addRow([cow.number, cow.lot||'', cow.owner||'', latest.breed_date, latest.bred_to||'']);
+          ws.addRow([cow.number, cow.lot||'', cow.owner||'', latest.breed_date, bredToText(latest)]);
         });
       }
 
@@ -5073,7 +5086,7 @@
         }
         if(opts.breeding){
           const latest = [...breedingFor(cow.number)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
-          row.push(latest ? latest.breed_date : '', latest ? (latest.bred_to||'') : '');
+          row.push(latest ? latest.breed_date : '', latest ? bredToText(latest) : '');
         }
         const addedRow = allWs.addRow(row);
         if(idx % 2 === 1){
@@ -5459,7 +5472,7 @@
     const calf = latestActiveCalfFor(num);
     let html = '';
     html += row('Last weight', w ? Number(w.weight).toLocaleString() + ' lbs' : none, w ? fmtDateShort(w.weigh_date) : '&nbsp;', '+ Weight', 'weights');
-    html += row('Bred to', br ? escapeHtml(br.bred_to || br.natural_sire || 'Unknown') : none, br ? escapeHtml((br.pregnancy_method ? br.pregnancy_method + ' · ' : '') + fmtDateShort(br.breed_date)) : '&nbsp;', '+ Breeding', 'breeding');
+    html += row('Bred to', br ? escapeHtml(bredToText(br) || 'Unknown') : none, br ? escapeHtml((isBullBred(br) && br.bred_to ? 'Was ' + br.bred_to + ' · ' : (br.pregnancy_method ? br.pregnancy_method + ' · ' : '')) + fmtDateShort(br.breed_date)) : '&nbsp;', '+ Breeding', 'breeding');
     html += row('Last calving', cv ? escapeHtml(calfSexLabel(cv.calf_sex)) + ' calf' : none, cv ? escapeHtml(fmtDateShort(cv.calving_date) + (cv.birth_weight != null ? ' · ' + cv.birth_weight + ' lbs' : '')) : '&nbsp;', '+ Calving', 'calving');
     html += row('Last med', m ? escapeHtml(m.medicine) : none, m ? escapeHtml(fmtDateShort(m.date) + (m.reason ? ' · ' + m.reason : '')) : '&nbsp;', '+ Med', 'meds');
     html += row('Last note', nt ? escapeHtml(nt.note || '') : none, nt ? fmtDateShort(nt.note_date) : '&nbsp;', '+ Note', 'notes');
@@ -5601,6 +5614,7 @@
       : breedingRecs.map(r=>{
           const details = [];
           if(r.bred_to) details.push(`Bred to: ${escapeHtml(r.bred_to)}`);
+          if(isBullBred(r)) details.push('Vet check says: Bull Bred');
           if(r.pregnancy_method) details.push(escapeHtml(r.pregnancy_method));
           if(r.natural_sire) details.push(`Natural sire: ${escapeHtml(r.natural_sire)}`);
           return `<div class="record has-tools"${r.pregnancy_status==='Open' ? ' style="border-left-color:#7A2E27;"' : ''}>
@@ -5773,6 +5787,7 @@
       div.className = 'record';
       const details = [];
       if(r.bred_to) details.push(`Bred to: ${escapeHtml(r.bred_to)}`);
+      if(isBullBred(r)) details.push('Vet check says: Bull Bred');
       if(r.pregnancy_method) details.push(escapeHtml(r.pregnancy_method));
       if(r.natural_sire) details.push(`Natural sire: ${escapeHtml(r.natural_sire)}`);
       div.innerHTML = `
@@ -8915,7 +8930,7 @@
     const latestBreeding = [...breedingFor(num)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
     if(latestBreeding){
       const parts = [];
-      if(latestBreeding.bred_to) parts.push(`Bred to: ${latestBreeding.bred_to}`);
+      if(bredToText(latestBreeding)) parts.push(`Bred to: ${bredToText(latestBreeding)}`);
       else if(latestBreeding.pregnancy_status === 'Open') parts.push('Open');
       if(latestBreeding.notes) parts.push(latestBreeding.notes);
       const detail = parts.join(', ');
@@ -11065,7 +11080,7 @@
       ]},
       { id:'breeding', label:'Breeding (latest record)', cols:[
         { key:'b_date', label:'Breed Date', get:(r,x)=> x.br ? advFmtD(x.br.breed_date) : '' },
-        { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? (x.br.bred_to || '') : '' },
+        { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? (isBullBred(x.br) ? 'Bull Bred' : (x.br.bred_to || '')) : '' },
         { key:'b_nat', label:'Natural Sire', get:(r,x)=> x.br ? (x.br.natural_sire || '') : '' },
         { key:'b_method', label:'Method', get:(r,x)=> x.br ? (x.br.pregnancy_method || '') : '' },
         { key:'b_check', label:'Preg Check', get:(r,x)=> !x.br ? '' : (x.br.pregnancy_status === 'Open' ? 'Open' : x.br.pregnancy_status === 'Bred' ? 'Bred (preg)' : 'Not checked') },
@@ -12504,7 +12519,7 @@
       const out = calved ? 'Calved' : b.pregnancy_status === 'Bred' ? 'Pregnant' : b.pregnancy_status === 'Open' ? 'Open' : 'Not checked';
       const m = b.pregnancy_method;
       const method = m === 'AI' ? 'AI' : m === 'ET' ? 'ET' : m === 'BB' ? 'Natural (BB)' : 'Unknown';
-      const sire = (m === 'BB' ? (b.natural_sire || b.bred_to) : (b.bred_to || b.natural_sire)) || '(none)';
+      const sire = (isBullBred(b) ? 'Bull Bred' : (m === 'BB' ? (b.natural_sire || b.bred_to) : (b.bred_to || b.natural_sire))) || '(none)';
       return { b, c, out, method, sire };
     });
     const cnt = (arr, o)=> arr.filter(x=> x.out === o).length;
@@ -14212,7 +14227,7 @@
     const list = cows.filter(c=> isActiveStatus(c) && c.calved).sort((a,b)=>cowNumCmp(a.number, b.number));
     const rows = list.map((c,i)=>{
       const latest = [...breedingFor(c.number)].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
-      const bredTo = latest ? (latest.bred_to || latest.natural_sire || '') : '';
+      const bredTo = latest ? bredToText(latest) : '';
       return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">#${escapeHtml(c.number)}</td><td style="padding:8px;">${escapeHtml(c.owner||'')}</td><td style="padding:8px;">${escapeHtml(bredTo)}</td></tr>`;
     }).join('');
     reportCardModal('Calved Cows', list, ['Cow #','Owner','Bred To'], rows, calvedReportModal, 'Active cows currently marked Calved, with the sire from their most recent breeding record.');
@@ -14484,7 +14499,7 @@
     } else {
       const rowsHtml = entries.map((e,i)=>{
         const detail = [];
-        if(e.breeding.bred_to) detail.push(`Bred to: ${e.breeding.bred_to}`);
+        if(bredToText(e.breeding)) detail.push(`Bred to: ${bredToText(e.breeding)}`);
         if(e.breeding.pregnancy_method) detail.push(e.breeding.pregnancy_method);
         return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">${e.breeding.open_date ? fmtDateShort(e.breeding.open_date) : ''}</td><td style="padding:8px;">#${escapeHtml(e.cow.number)}</td><td style="padding:8px;">Open</td><td style="padding:8px;white-space:normal;">${escapeHtml(detail.join(' — '))}</td></tr>`;
       }).join('');

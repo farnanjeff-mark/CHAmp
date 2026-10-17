@@ -5293,6 +5293,10 @@
         <label>Group</label>
         <select id="tbiGrp">${grpOpts}</select>
       </div>
+      <div class="field">
+        <label>Or Enter Specific Cow Numbers (overrides location/group above)</label>
+        <textarea id="tbiNums" rows="3" placeholder="e.g. 214, 215, 216 or one per line"></textarea>
+      </div>
       <div id="tbiCount" style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0C447C;margin-bottom:6px;"></div>
       <div id="tbiList" style="max-height:240px;overflow:auto;border:1px solid #cfe0ee;border-radius:8px;margin-bottom:12px;background:#fff;"></div>
       ${last ? `<button class="btn btn-outline btn-full" id="tbiUndo" style="margin-bottom:10px;border-color:#A32D2D;color:#A32D2D;">Undo last turn-in (${escapeHtml(last.bull)}, ${last.items.length} cow${last.items.length!==1?'s':''}, ${fmtDateShort(last.date)})</button>` : ''}
@@ -5307,26 +5311,40 @@
     function refreshList(){
       const loc = modal.querySelector('#tbiLoc').value;
       const grp = modal.querySelector('#tbiGrp').value;
+      const numsRaw = modal.querySelector('#tbiNums').value.trim();
       const listEl = modal.querySelector('#tbiList');
       const countEl = modal.querySelector('#tbiCount');
       selected.clear(); eligible = [];
-      if(!loc && !grp){
-        listEl.innerHTML = '<div style="padding:12px;font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">Pick a location, a group, or both.</div>';
+      if(!loc && !grp && !numsRaw){
+        listEl.innerHTML = '<div style="padding:12px;font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">Pick a location, a group, or both, or type cow numbers.</div>';
         countEl.textContent = '';
         modal.querySelector('#confirmTbi').textContent = 'Turn In';
         return;
       }
-      const matched = cows.filter(c=> isActiveStatus(c) && (!loc || c.lot === loc) && (!grp || c.cow_group === grp))
-        .sort((a,b)=> cowNumCmp(a.number, b.number));
-      const rows = matched.map(c=>{
-        const rec = turnInTargetFor(c.number);
-        if(rec){ eligible.push(c.number); selected.add(c.number); }
+      // items: { num, cow (or null), reason (why skipped, or '') }
+      let items;
+      if(numsRaw){
+        const seen = new Set();
+        items = numsRaw.split(/[,\n\s]+/).map(x=>x.trim()).filter(Boolean).filter(n=>{ if(seen.has(n)) return false; seen.add(n); return true; }).map(n=>{
+          const cow = cows.find(c=> c.number === n);
+          if(!cow) return { num: n, cow: null, reason: 'not found — skipped' };
+          if(!isActiveStatus(cow)) return { num: n, cow, reason: (cow.status || 'not active') + ' — skipped' };
+          return { num: n, cow, reason: '' };
+        });
+      } else {
+        items = cows.filter(c=> isActiveStatus(c) && (!loc || c.lot === loc) && (!grp || c.cow_group === grp))
+          .sort((a,b)=> cowNumCmp(a.number, b.number))
+          .map(c=> ({ num: c.number, cow: c, reason: '' }));
+      }
+      const rows = items.map(it=>{
+        const rec = (it.cow && !it.reason) ? turnInTargetFor(it.num) : null;
+        if(rec){ eligible.push(it.num); selected.add(it.num); }
         const info = rec
           ? `bred ${fmtDateShort(rec.breed_date)}${rec.pregnancy_method ? ' ('+escapeHtml(rec.pregnancy_method)+')' : ''}${rec.natural_sire ? ' — sire now: '+escapeHtml(rec.natural_sire) : ''}`
-          : 'no breeding in the last year — skipped';
+          : (it.reason || 'no breeding in the last year — skipped');
         return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid #e3e8ee;font-family:Arial,sans-serif;font-size:13px;${rec ? '' : 'opacity:.55;'}">
-          <input type="checkbox" class="tbi-check" data-num="${escapeHtml(c.number)}" ${rec ? 'checked' : 'disabled'} style="width:18px;height:18px;accent-color:#0274BA;flex:none;"/>
-          <span><b style="color:#0C447C;">#${escapeHtml(c.number)}</b> <span style="color:#6b6350;">${info}</span></span>
+          <input type="checkbox" class="tbi-check" data-num="${escapeHtml(it.num)}" ${rec ? 'checked' : 'disabled'} style="width:18px;height:18px;accent-color:#0274BA;flex:none;"/>
+          <span><b style="color:#0C447C;">#${escapeHtml(it.num)}</b> <span style="color:#6b6350;">${info}</span></span>
         </label>`;
       });
       listEl.innerHTML = rows.length ? rows.join('') : '<div style="padding:12px;font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">No active cows match.</div>';
@@ -5342,6 +5360,7 @@
     }
     modal.querySelector('#tbiLoc').addEventListener('change', refreshList);
     modal.querySelector('#tbiGrp').addEventListener('change', refreshList);
+    modal.querySelector('#tbiNums').addEventListener('input', refreshList);
     refreshList();
     modal.querySelector('#cancelTbi').addEventListener('click', closeModal);
     const undoBtn = modal.querySelector('#tbiUndo');

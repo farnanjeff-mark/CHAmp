@@ -504,6 +504,10 @@
           <span style="font-size:22px;line-height:1;">🔐</span>
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Vault</span>
         </div>
+        <div id="homeBulkEntryBtn" role="button" aria-label="Bulk Entry" style="flex:1;min-width:0;min-height:62px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;color:#fff;font-family:Arial,sans-serif;user-select:none;-webkit-user-select:none;">
+          <span style="font-size:22px;line-height:1;">🔧</span>
+          <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0;line-height:1.1;text-align:center;white-space:nowrap;">Bulk Entry</span>
+        </div>
         <div id="homeSyncHoldWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#3C9142;border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeSyncHoldBadge" style="font-size:26px;font-weight:700;color:#fff;line-height:1;">0</span>
           <span id="homeSyncHoldLabel" style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Sync On</span>
@@ -512,7 +516,6 @@
           <span style="font-size:26px;font-weight:700;line-height:1;">+</span>
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Add Cow</span>
         </div>
-        <div style="flex:1;min-width:0;box-sizing:border-box;border:1.5px solid transparent;padding:8px 2px;"></div>
       </div>
     </div>
   </div>
@@ -523,7 +526,6 @@
     <div class="section-label">Data</div>
     <button class="btn btn-nav-tool btn-full" id="exportEverythingBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📦</span>&nbsp;&nbsp;Export</button>
     <button class="btn btn-nav-tool btn-full" id="importDataBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📥</span>&nbsp;&nbsp;Import</button>
-    <button class="btn btn-nav-tool btn-full" id="bulkEditBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">🔧</span>&nbsp;&nbsp;Bulk Entry</button>
 
     <div class="section-label">Herd Tools</div>
     <button class="btn btn-nav-tool btn-full" id="vetPregCheckBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🩺</span>&nbsp;&nbsp;Vet Preg Check</button>
@@ -1609,7 +1611,6 @@
     <div id="profileEmptyState" class="empty hidden">No cattle logged yet.<br/>Tap the + button to add your first cow.</div>
     <button class="btn btn-outline btn-full" id="profilePrintListBtn" style="margin-top:8px;">🖨️ Print This List</button>
     <button class="btn btn-outline btn-full" id="profileExportListBtn" style="margin-top:8px;">📊 Export This List</button>
-    <button class="btn btn-outline btn-full" id="profileBulkLogBtn" style="margin-top:8px;">📋 Bulk Log Entry</button>
   </div>
 
   <div class="view hidden" id="profileView">
@@ -5138,25 +5139,86 @@
     }
   }
 
-  function bulkLogEntryModal(){
-    const count = lastFilteredProfileCows.length;
-    if(count === 0){ showToast('No cows in the current list'); return; }
+  // ===== Utilities > Bulk Entry menu =====
+  function bulkEntryMenuModal(){
     const modal = openModal(`
-      <div class="modal-title">Bulk Log Entry</div>
-      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:16px;">Logs the same entry for all ${count} cow${count!==1?'s':''} currently showing. Choose what to log:</div>
-      <button class="btn btn-nav-tool btn-full" id="bulkPickMeds" style="margin-bottom:10px;">🐄 Med — for all ${count} cows</button>
-      <button class="btn btn-nav-tool btn-full" id="bulkPickNote" style="margin-bottom:10px;">📝 Note — for all ${count} cows</button>
-      <button class="btn btn-nav-tool btn-full" id="bulkPickBreeding" style="margin-bottom:10px;">🐂 Breeding — for all ${count} cows</button>
-      <button class="btn btn-nav-tool btn-full" id="bulkPickTurnIn" style="margin-bottom:16px;">🐂 Turn Bull In — by location / group</button>
+      <div class="modal-title">Bulk Entry</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:16px;">Choose what to do for a group of cows at once:</div>
+      <button class="btn btn-nav-tool btn-full" id="bemEdit" style="margin-bottom:10px;">🔧 Bulk Edit — Owner, Location, Group, Season</button>
+      <button class="btn btn-nav-tool btn-full" id="bemMed" style="margin-bottom:10px;">🐄 Med — log for a group</button>
+      <button class="btn btn-nav-tool btn-full" id="bemNote" style="margin-bottom:10px;">📝 Note — log for a group</button>
+      <button class="btn btn-nav-tool btn-full" id="bemBreeding" style="margin-bottom:10px;">🐂 Breeding — log for a group</button>
+      <button class="btn btn-nav-tool btn-full" id="bemTurnIn" style="margin-bottom:16px;">🐂 Turn Bull In — by location / group</button>
       <div class="modal-actions">
-        <button class="btn btn-outline btn-full" id="cancelBulkLog">Cancel</button>
+        <button class="btn btn-outline btn-full" id="cancelBem">Cancel</button>
       </div>
     `);
-    modal.querySelector('#cancelBulkLog').addEventListener('click', closeModal);
-    modal.querySelector('#bulkPickMeds').addEventListener('click', ()=>{ closeModal(); bulkMedFormModal(); });
-    modal.querySelector('#bulkPickNote').addEventListener('click', ()=>{ closeModal(); bulkNoteFormModal(); });
-    modal.querySelector('#bulkPickBreeding').addEventListener('click', ()=>{ closeModal(); bulkBreedingFormModal(); });
-    modal.querySelector('#bulkPickTurnIn').addEventListener('click', ()=>{ closeModal(); turnBullInModal(); });
+    modal.querySelector('#cancelBem').addEventListener('click', closeModal);
+    modal.querySelector('#bemEdit').addEventListener('click', ()=>{ closeModal(); bulkEditModal(); });
+    modal.querySelector('#bemMed').addEventListener('click', ()=>{ closeModal(); bulkCowPickerModal('Bulk Log Med', bulkMedFormModal); });
+    modal.querySelector('#bemNote').addEventListener('click', ()=>{ closeModal(); bulkCowPickerModal('Bulk Log Note', bulkNoteFormModal); });
+    modal.querySelector('#bemBreeding').addEventListener('click', ()=>{ closeModal(); bulkCowPickerModal('Bulk Log Breeding', bulkBreedingFormModal); });
+    modal.querySelector('#bemTurnIn').addEventListener('click', ()=>{ closeModal(); turnBullInModal(); });
+  }
+
+  // Step 1 for Bulk Med / Note / Breeding: choose which cows (active cows only), then open the form
+  function bulkCowPickerModal(title, onNext){
+    const modal = openModal(`
+      <div class="modal-title">${escapeHtml(title)} — Which Cows?</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:14px;">Active cows only. Pick a location, group or owner, search a number, or type specific cow numbers.</div>
+      <div class="toolbar">
+        <input type="text" id="bcpSearch" placeholder="Search cow #..." autocomplete="off" style="flex:1;"/>
+      </div>
+      <div class="toolbar" id="bcpFilterRow">
+        <select id="bcpFilter" style="flex:1;"><option value="">All Locations / Groups / Owners</option></select>
+      </div>
+      <div id="bcpCount" style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0C447C;margin-bottom:10px;"></div>
+      <div class="field">
+        <label>Or Enter Specific Cow Numbers (overrides search/filter above)</label>
+        <textarea id="bcpNums" rows="3" placeholder="e.g. 214, 215, 216 or one per line"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelBcp">Cancel</button>
+        <button class="btn btn-barn" id="nextBcp">Next</button>
+      </div>
+    `);
+    populateLocationGroupFilter('bcpFilterRow', 'bcpFilter');
+    function hasChoice(){
+      return !!(modal.querySelector('#bcpNums').value.trim() || modal.querySelector('#bcpSearch').value.trim() || modal.querySelector('#bcpFilter').value);
+    }
+    function computeTargets(){
+      const numsRaw = modal.querySelector('#bcpNums').value.trim();
+      if(numsRaw){
+        const entered = new Set(numsRaw.split(/[,\n\s]+/).map(x=>x.trim()).filter(Boolean));
+        return cows.filter(c=> isActiveStatus(c) && entered.has(c.number));
+      }
+      if(!hasChoice()) return [];
+      const q = (modal.querySelector('#bcpSearch').value||'').trim().toLowerCase();
+      const filterVal = modal.querySelector('#bcpFilter').value;
+      const [filterKind, filterValue] = filterVal ? filterVal.split(/:(.*)/s) : [null, null];
+      return cows.filter(c=>{
+        if(!isActiveStatus(c)) return false;
+        if(!matchesLocationGroupFilter(c, filterKind, filterValue)) return false;
+        return !q || c.number.toLowerCase().includes(q);
+      }).sort((a,b)=> cowNumCmp(a.number, b.number));
+    }
+    function refreshCount(){
+      const el = modal.querySelector('#bcpCount');
+      if(!hasChoice()){ el.textContent = ''; return; }
+      const n = computeTargets().length;
+      el.textContent = `${n} active cow${n!==1?'s':''} selected`;
+    }
+    ['#bcpSearch','#bcpNums'].forEach(id=> modal.querySelector(id).addEventListener('input', refreshCount));
+    modal.querySelector('#bcpFilter').addEventListener('change', refreshCount);
+    modal.querySelector('#cancelBcp').addEventListener('click', closeModal);
+    modal.querySelector('#nextBcp').addEventListener('click', ()=>{
+      if(!hasChoice()){ showToast('Pick a location/group/owner, or type cow numbers'); return; }
+      const targets = computeTargets();
+      if(targets.length === 0){ showToast('No active cows match'); return; }
+      closeModal();
+      lastFilteredProfileCows = targets;
+      onNext();
+    });
   }
 
   // ===== Turn Bull In: adds a clean-up bull to many cows at once =====
@@ -8351,7 +8413,7 @@
   document.getElementById('calvingSearchBox').addEventListener('input', renderCalvingList);
   document.getElementById('calvingSortBy').addEventListener('change', renderCalvingList);
   document.getElementById('exportEverythingBtn').addEventListener('click', ()=> exportEverything(true, true, true));
-  document.getElementById('bulkEditBtn').addEventListener('click', bulkEditModal);
+  document.getElementById('homeBulkEntryBtn').addEventListener('click', bulkEntryMenuModal);
   document.getElementById('vetPregCheckBtn').addEventListener('click', showVetPregCheck);
   document.getElementById('vetPregCheckHomeBtn').addEventListener('click', showHome);
   document.getElementById('vetPregSaveBtn').addEventListener('click', saveVetPregCheckEntry);
@@ -8529,7 +8591,6 @@
   document.getElementById('profileLocationGroupFilter').addEventListener('change', renderProfileList);
   document.getElementById('profilePrintListBtn').addEventListener('click', ()=> printListModal(lastFilteredProfileCows, 'Print This List', 'print'));
   document.getElementById('profileExportListBtn').addEventListener('click', ()=> printListModal(lastFilteredProfileCows, 'Export This List', 'export'));
-  document.getElementById('profileBulkLogBtn').addEventListener('click', bulkLogEntryModal);
   document.getElementById('profileSortBy').addEventListener('change', renderProfileList);
   document.getElementById('detailViewProfile').addEventListener('click', ()=> openProfileCow(currentCow));
   document.getElementById('calvingViewProfile').addEventListener('click', ()=> openProfileCow(currentCalvingCow));

@@ -2508,8 +2508,8 @@
     return Math.abs(diff) > 10;
   }
   // When a vet check is saved and doesn't fit the breeding date, the cow is marked BB (natural breeding). AI and ET stay as they are.
-  function methodAfterVetCheck(method, breedDate, vetCallsText){
-    return vetMismatch(breedDate, vetCallsText, todayLocal(), method) ? 'BB' : method;
+  function methodAfterVetCheck(method, breedDate, vetCallsText, vetCallDate){
+    return vetMismatch(breedDate, vetCallsText, vetCallDate || todayLocal(), method) ? 'BB' : method;
   }
   // What the "Bred To" column shows: BB cows show BB and their natural sires; everyone else shows the sire as before.
   function bredToText(b){
@@ -2517,15 +2517,15 @@
     if(b.pregnancy_method === 'BB') return b.natural_sire ? 'BB \u2014 ' + b.natural_sire : 'BB';
     return b.bred_to || b.natural_sire || '';
   }
-  function resolveExpectedDueDate(breedDate, vetCallsText, method){
+  function resolveExpectedDueDate(breedDate, vetCallsText, method, vetCallDate){
     const breedBased = computeDueDate(breedDate, method);
     const daysAlong = parseDaysAlongFromVetCalls(vetCallsText);
     if(daysAlong == null){
       return { dueDate: breedBased, usedVetCheck: false, diffDays: 0 };
     }
-    // The vet call is assumed to describe how far along she is as of today,
-    // the day this note is being entered/updated.
-    const vetBased = computeVetAdjustedDueDate(todayLocal(), daysAlong);
+    // The vet call describes how far along she was on the vet call date.
+    // If no date was given, it is assumed to be today, the day this note is entered/updated.
+    const vetBased = computeVetAdjustedDueDate(vetCallDate || todayLocal(), daysAlong);
     const diffDays = Math.round((new Date(vetBased+'T00:00:00') - new Date(breedBased+'T00:00:00')) / 86400000);
     if(Math.abs(diffDays) > 10){
       return { dueDate: vetBased, usedVetCheck: true, diffDays };
@@ -7606,7 +7606,8 @@
     const today = todayLocal();
     const initialDate = isEdit ? existingRecord.breed_date : today;
     const initialVetCalls = isEdit ? (existingRecord.vet_calls||'') : '';
-    const initialResolved = resolveExpectedDueDate(initialDate, initialVetCalls, isEdit ? existingRecord.pregnancy_method : '');
+    const initialVetDate = isEdit ? (existingRecord.vet_call_date||'') : '';
+    const initialResolved = resolveExpectedDueDate(initialDate, initialVetCalls, isEdit ? existingRecord.pregnancy_method : '', initialVetDate);
     const initialIsOpen = isEdit && existingRecord.pregnancy_status === 'Open';
     const modal = openModal(`
       <div class="modal-title">${isEdit ? 'Edit Breeding' : 'Log Breeding'} — #${escapeHtml(currentBreedingCow)}</div>
@@ -7636,6 +7637,11 @@
           <textarea id="brdVet" rows="2" placeholder="e.g. 60 (days along, per vet)">${escapeHtml(initialVetCalls)}</textarea>
         </div>
         <div class="field">
+          <label>Vet Call Date</label>
+          <input type="date" id="brdVetDate" value="${initialVetDate}"/>
+          <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-top:4px;">The day the vet checked her. Leave blank to use today.</div>
+        </div>
+        <div class="field">
           <label>Expected Due Date</label>
           <input type="text" id="brdDueDisplay" value="${fmtDate(initialResolved.dueDate)}" disabled style="background:#e5ded0;"/>
           <div id="brdDueNote" style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-top:4px;">${initialResolved.usedVetCheck ? `Adjusted from vet call — ${Math.abs(initialResolved.diffDays)} days off from the breed-date estimate.` : ''}</div>
@@ -7659,7 +7665,7 @@
       const vetText = modal.querySelector('#brdVet').value;
       const methodVal = modal.querySelector('#brdMethod').value;
       if(!dateVal){ modal.querySelector('#brdDueDisplay').value = ''; modal.querySelector('#brdDueNote').textContent = ''; return; }
-      const resolved = resolveExpectedDueDate(dateVal, vetText, methodVal);
+      const resolved = resolveExpectedDueDate(dateVal, vetText, methodVal, modal.querySelector('#brdVetDate').value);
       modal.querySelector('#brdDueDisplay').value = fmtDate(resolved.dueDate);
       modal.querySelector('#brdDueNote').textContent = resolved.usedVetCheck ? `Adjusted from vet call — ${Math.abs(resolved.diffDays)} days off from the breed-date estimate.` : '';
     }
@@ -7670,6 +7676,7 @@
     }
     modal.querySelector('#brdDate').addEventListener('input', refreshDueDateDisplay);
     modal.querySelector('#brdVet').addEventListener('input', refreshDueDateDisplay);
+    modal.querySelector('#brdVetDate').addEventListener('input', refreshDueDateDisplay);
     modal.querySelector('#brdMethod').addEventListener('change', refreshDueDateDisplay);
     modal.querySelector('#brdIsOpen').addEventListener('change', refreshOpenToggle);
     refreshOpenToggle();
@@ -7683,10 +7690,12 @@
       const sire = modal.querySelector('#brdSire').value.trim();
       const isOpen = modal.querySelector('#brdIsOpen').checked;
       const vet = modal.querySelector('#brdVet').value.trim();
+      const vetDate = modal.querySelector('#brdVetDate').value;
       const openDate = modal.querySelector('#brdOpenDate').value;
       const notes = modal.querySelector('#brdNotes').value.trim();
       if(!dateVal){ showToast('Date is required'); return; }
       if(isOpen && !openDate){ showToast('Date found open is required'); return; }
+      if(!isOpen && vetDate && vetDate < dateVal){ showToast('Vet call date can\'t be before the breeding date'); return; }
       const btn = modal.querySelector('#confirmBrd');
       btn.disabled = true;
       await addBullIfNew(bredTo);
@@ -7704,13 +7713,14 @@
           open_date: openDate
         };
       } else {
-        const resolved = resolveExpectedDueDate(dateVal, vet, method);
+        const resolved = resolveExpectedDueDate(dateVal, vet, method, vetDate);
         body = {
           breed_date: dateVal,
           bred_to: bredTo||null,
-          pregnancy_method: methodAfterVetCheck(method, dateVal, vet)||null,
+          pregnancy_method: methodAfterVetCheck(method, dateVal, vet, vetDate)||null,
           natural_sire: sire||null,
           vet_calls: vet||null,
+          vet_call_date: vetDate || (vet ? todayLocal() : null),
           notes: notes||null,
           expected_due_date: resolved.dueDate,
           pregnancy_status: vet ? 'Bred' : null,

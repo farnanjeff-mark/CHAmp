@@ -5146,7 +5146,8 @@
       <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:16px;">Logs the same entry for all ${count} cow${count!==1?'s':''} currently showing. Choose what to log:</div>
       <button class="btn btn-nav-tool btn-full" id="bulkPickMeds" style="margin-bottom:10px;">🐄 Med — for all ${count} cows</button>
       <button class="btn btn-nav-tool btn-full" id="bulkPickNote" style="margin-bottom:10px;">📝 Note — for all ${count} cows</button>
-      <button class="btn btn-nav-tool btn-full" id="bulkPickBreeding" style="margin-bottom:16px;">🐂 Breeding — for all ${count} cows</button>
+      <button class="btn btn-nav-tool btn-full" id="bulkPickBreeding" style="margin-bottom:10px;">🐂 Breeding — for all ${count} cows</button>
+      <button class="btn btn-nav-tool btn-full" id="bulkPickTurnIn" style="margin-bottom:16px;">🐂 Turn Bull In — by location / group</button>
       <div class="modal-actions">
         <button class="btn btn-outline btn-full" id="cancelBulkLog">Cancel</button>
       </div>
@@ -5155,6 +5156,175 @@
     modal.querySelector('#bulkPickMeds').addEventListener('click', ()=>{ closeModal(); bulkMedFormModal(); });
     modal.querySelector('#bulkPickNote').addEventListener('click', ()=>{ closeModal(); bulkNoteFormModal(); });
     modal.querySelector('#bulkPickBreeding').addEventListener('click', ()=>{ closeModal(); bulkBreedingFormModal(); });
+    modal.querySelector('#bulkPickTurnIn').addEventListener('click', ()=>{ closeModal(); turnBullInModal(); });
+  }
+
+  // ===== Turn Bull In: adds a clean-up bull to many cows at once =====
+  // Puts the bull in as the natural sire on each cow's most recent breeding (within the last year)
+  // and adds a note. The AI breeding itself (date, bull, method) is left as it is.
+  const TURNIN_UNDO_KEY = 'champ_last_turnin_v1';
+  function getLastTurnIn(){
+    try{
+      const v = JSON.parse(localStorage.getItem(TURNIN_UNDO_KEY) || 'null');
+      return (v && Array.isArray(v.items) && v.items.length) ? v : null;
+    }catch(e){ return null; }
+  }
+  function saveLastTurnIn(v){
+    try{
+      if(v) localStorage.setItem(TURNIN_UNDO_KEY, JSON.stringify(v));
+      else localStorage.removeItem(TURNIN_UNDO_KEY);
+    }catch(e){}
+  }
+  function turnInTargetFor(num){
+    const list = breedingFor(num);
+    if(!list.length) return null;
+    const latest = [...list].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
+    if(latest._pendingSync) return null;
+    const cutoff = addDays(todayLocal(), -365);
+    if(new Date(latest.breed_date+'T00:00:00') < cutoff) return null;
+    return latest;
+  }
+  function refreshAfterBreedingChange(){
+    saveOfflineCache();
+    renderBreedingList();
+    renderProfileList();
+  }
+  async function undoTurnIn(){
+    const last = getLastTurnIn();
+    if(!last) return;
+    let ok = 0, failed = 0;
+    const remaining = [];
+    for(const it of last.items){
+      try{
+        const updated = await api('/breeding_records?id=eq.' + encodeURIComponent(it.id), {
+          method:'PATCH',
+          headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+          body: JSON.stringify({ natural_sire: it.prev_sire, notes: it.prev_notes })
+        });
+        const idx = breedingRecords.findIndex(b=>b.id===it.id);
+        if(idx !== -1 && updated && updated[0]) breedingRecords[idx] = updated[0];
+        ok++;
+      }catch(e){ failed++; remaining.push(it); }
+    }
+    saveLastTurnIn(remaining.length ? Object.assign({}, last, { items: remaining }) : null);
+    refreshAfterBreedingChange();
+    showToast(failed ? `Undid ${ok}, ${failed} could not be undone — try again` : `Undid turn-in for ${ok} cow${ok!==1?'s':''}`);
+  }
+  function turnBullInModal(){
+    const today = todayLocal();
+    const last = getLastTurnIn();
+    const locOpts = '<option value="">-- Any location --</option>' + getLocationOptions().map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+    const grpOpts = '<option value="">-- Any group --</option>' + getGroupOptions().map(o=>`<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+    const modal = openModal(`
+      <div class="modal-title">Turn Bull In</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:14px;">Adds the bull as the natural sire on each cow's most recent breeding (within the last year) and adds a note. Her AI breeding stays as it is.</div>
+      ${fieldWithOther('tbiBull', 'Bull', getBullOptionsWithExtras(), 'Type bull name or ID')}
+      <div class="field">
+        <label>Date Turned In</label>
+        <input type="date" id="tbiDate" value="${today}"/>
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <select id="tbiLoc">${locOpts}</select>
+      </div>
+      <div class="field">
+        <label>Group</label>
+        <select id="tbiGrp">${grpOpts}</select>
+      </div>
+      <div id="tbiCount" style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0C447C;margin-bottom:6px;"></div>
+      <div id="tbiList" style="max-height:240px;overflow:auto;border:1px solid #cfe0ee;border-radius:8px;margin-bottom:12px;background:#fff;"></div>
+      ${last ? `<button class="btn btn-outline btn-full" id="tbiUndo" style="margin-bottom:10px;border-color:#A32D2D;color:#A32D2D;">Undo last turn-in (${escapeHtml(last.bull)}, ${last.items.length} cow${last.items.length!==1?'s':''}, ${fmtDateShort(last.date)})</button>` : ''}
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelTbi">Cancel</button>
+        <button class="btn btn-barn" id="confirmTbi">Turn In</button>
+      </div>
+    `);
+    wireFieldWithOther(modal, 'tbiBull');
+    const selected = new Set();
+    let eligible = [];
+    function refreshList(){
+      const loc = modal.querySelector('#tbiLoc').value;
+      const grp = modal.querySelector('#tbiGrp').value;
+      const listEl = modal.querySelector('#tbiList');
+      const countEl = modal.querySelector('#tbiCount');
+      selected.clear(); eligible = [];
+      if(!loc && !grp){
+        listEl.innerHTML = '<div style="padding:12px;font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">Pick a location, a group, or both.</div>';
+        countEl.textContent = '';
+        modal.querySelector('#confirmTbi').textContent = 'Turn In';
+        return;
+      }
+      const matched = cows.filter(c=> isActiveStatus(c) && (!loc || c.lot === loc) && (!grp || c.cow_group === grp))
+        .sort((a,b)=> cowNumCmp(a.number, b.number));
+      const rows = matched.map(c=>{
+        const rec = turnInTargetFor(c.number);
+        if(rec){ eligible.push(c.number); selected.add(c.number); }
+        const info = rec
+          ? `bred ${fmtDateShort(rec.breed_date)}${rec.pregnancy_method ? ' ('+escapeHtml(rec.pregnancy_method)+')' : ''}${rec.natural_sire ? ' — sire now: '+escapeHtml(rec.natural_sire) : ''}`
+          : 'no breeding in the last year — skipped';
+        return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid #e3e8ee;font-family:Arial,sans-serif;font-size:13px;${rec ? '' : 'opacity:.55;'}">
+          <input type="checkbox" class="tbi-check" data-num="${escapeHtml(c.number)}" ${rec ? 'checked' : 'disabled'} style="width:18px;height:18px;accent-color:#0274BA;flex:none;"/>
+          <span><b style="color:#0C447C;">#${escapeHtml(c.number)}</b> <span style="color:#6b6350;">${info}</span></span>
+        </label>`;
+      });
+      listEl.innerHTML = rows.length ? rows.join('') : '<div style="padding:12px;font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">No active cows match.</div>';
+      listEl.querySelectorAll('.tbi-check').forEach(cb=> cb.addEventListener('change', ()=>{
+        if(cb.checked) selected.add(cb.dataset.num); else selected.delete(cb.dataset.num);
+        updateCount();
+      }));
+      updateCount();
+    }
+    function updateCount(){
+      modal.querySelector('#tbiCount').textContent = `${selected.size} of ${eligible.length} cows will get the bull`;
+      modal.querySelector('#confirmTbi').textContent = selected.size ? `Turn In for ${selected.size} Cow${selected.size!==1?'s':''}` : 'Turn In';
+    }
+    modal.querySelector('#tbiLoc').addEventListener('change', refreshList);
+    modal.querySelector('#tbiGrp').addEventListener('change', refreshList);
+    refreshList();
+    modal.querySelector('#cancelTbi').addEventListener('click', closeModal);
+    const undoBtn = modal.querySelector('#tbiUndo');
+    if(undoBtn) undoBtn.addEventListener('click', async ()=>{
+      if(!confirm('Undo the last turn-in? The sire and note on those cows go back the way they were.')) return;
+      undoBtn.disabled = true;
+      await undoTurnIn();
+      closeModal();
+    });
+    modal.querySelector('#confirmTbi').addEventListener('click', async ()=>{
+      const bull = valueOf(modal, 'tbiBull');
+      const dateVal = modal.querySelector('#tbiDate').value;
+      if(!bull){ showToast('Pick or type the bull'); return; }
+      if(!dateVal){ showToast('Date is required'); return; }
+      if(selected.size === 0){ showToast('No cows selected'); return; }
+      if(!confirm(`Add bull ${bull} to ${selected.size} cow${selected.size!==1?'s':''}?`)) return;
+      const btn = modal.querySelector('#confirmTbi');
+      btn.disabled = true; btn.textContent = 'Saving…';
+      await addBullIfNew(bull);
+      const noteText = `Bull ${bull} turned in ${fmtDateShort(dateVal)}`;
+      const nums = [...selected];
+      const items = [];
+      let failed = 0;
+      for(let i=0; i<nums.length; i+=8){
+        const chunk = nums.slice(i, i+8);
+        const results = await Promise.allSettled(chunk.map(async num=>{
+          const rec = turnInTargetFor(num);
+          if(!rec) throw new Error('no breeding');
+          const newNotes = (rec.notes ? rec.notes + '; ' : '') + noteText;
+          const updated = await api('/breeding_records?id=eq.' + encodeURIComponent(rec.id), {
+            method:'PATCH',
+            headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+            body: JSON.stringify({ natural_sire: bull, notes: newNotes })
+          });
+          const idx = breedingRecords.findIndex(b=>b.id===rec.id);
+          if(idx !== -1 && updated && updated[0]) breedingRecords[idx] = updated[0];
+          items.push({ id: rec.id, cow: num, prev_sire: rec.natural_sire || null, prev_notes: rec.notes || null });
+        }));
+        results.forEach(r=>{ if(r.status === 'rejected') failed++; });
+      }
+      if(items.length) saveLastTurnIn({ bull, date: dateVal, items });
+      refreshAfterBreedingChange();
+      closeModal();
+      showToast(failed ? `Saved ${items.length} cow${items.length!==1?'s':''}; ${failed} could not save — try again` : `Bull ${bull} added to ${items.length} cow${items.length!==1?'s':''}`);
+    });
   }
 
   function bulkMedFormModal(){
@@ -12815,10 +12985,7 @@
         ${savedManage ? `<button class="sr-ico edit" data-act="editreport" data-id="${r.id}" title="Edit report" aria-label="Edit report">&#9998;</button>` : ''}
       </div>`;
     };
-    const starred = savedReports.filter(r=> r.starred);
-    let html = `<div class="section-label" style="margin-top:0;">★ Starred</div>
-      <div class="sr-folder" style="border-color:#D9A21B;">${starred.length ? starred.map(r=> row(r,true)).join('') : '<div class="sr-empty">Nothing starred yet. Tap Manage, then the ☆ next to a report, to put it here.</div>'}</div>
-      <div class="section-label">Folders</div>`;
+    let html = `<div class="section-label" style="margin-top:0;">Folders</div>`;
     if(savedFolders.length === 0){
       html += '<div class="empty" style="padding:24px 20px;">No folders yet.<br/>Tap "+ New Folder" above, or save a report from Cow Search.</div>';
     }

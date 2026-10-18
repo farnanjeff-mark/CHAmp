@@ -1271,12 +1271,19 @@
     <button class="btn btn-nav-tool btn-full" id="homeHayingBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🌾</span>&nbsp;&nbsp;Haying</button>
     <button class="btn btn-nav-tool btn-full" id="homeBillCustomerBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🧾</span>&nbsp;&nbsp;Bill Customer</button>
     <button class="btn btn-nav-tool btn-full" id="homeBillHistoryBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">📜</span>&nbsp;&nbsp;Bill History</button>
-    <button class="btn btn-nav-tool btn-full" id="homeCustomAIBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">🧪</span>&nbsp;&nbsp;Custom AI</button>
+    <button class="btn btn-nav-tool btn-full" id="homeCustomAIBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🧪</span>&nbsp;&nbsp;Custom AI</button>
+    <button class="btn btn-nav-tool btn-full" id="homeSaleSheetsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">📋</span>&nbsp;&nbsp;Sale Sheets</button>
 
     <div class="section-label">Other Tools</div>
     <button class="btn btn-outline btn-full" id="homeEquipmentBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">🔧</span>&nbsp;&nbsp;Equipment Maintenance</button>
     <button class="btn btn-outline btn-full" id="homeFarmNotesBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">📝</span>&nbsp;&nbsp;Farm Notes</button>
     <button class="btn btn-outline btn-full" id="homeLoanCalcBtn" style="padding:11px 14px;font-size:14px;"><span style="font-size:18px;">💰</span>&nbsp;&nbsp;Loan Calculator</button>
+  </div>
+
+  <div class="view hidden" id="saleSheetsView">
+    <button class="btn btn-outline btn-full" id="saleSheetsHomeBtn" style="padding:14px 16px;font-size:16px;margin-bottom:16px;"><span style="font-size:26px;">🏠</span>&nbsp;&nbsp;Home</button>
+    <button class="btn btn-nav-tool btn-full" id="newSaleSheetBtn" style="padding:12px 14px;font-size:15px;margin-bottom:16px;"><span style="font-size:20px;">＋</span>&nbsp;&nbsp;New Sale Sheet</button>
+    <div id="saleSheetsList"></div>
   </div>
 
   <div class="view hidden" id="importView">
@@ -1858,6 +1865,7 @@
   let hayingBills = []; // [{id, customer, bill_date, farm_name, farm_address, rate_per_bale, total_bales, total_amount, line_items, created_at}]
   let hayingBillSettings = null; // {id, farm_name, farm_address} or null
   let homeStatsSettings = null; // {id, calved_since_date} or null
+  let saleSheets = []; // [{id, sale_date, sale_barn, buyer, storage_path, photo_url, cow_numbers, created_at}]
   let lastFilteredProfileCows = [];
   let pendingProfileFilterOverride = null;
   let vetPregSessionEntries = []; // [{cowNum, daysAlong, dueDate, usedVetCheck}]
@@ -2196,7 +2204,7 @@
         cows, treatments, calvings, generalNotes, weights, breedingRecords, cowPhotos,
         herdTally, hayingLog, equipmentMaintenance, equipmentList, calfTreatments, calfWeights,
         farmNotes, bulls, hayingFields, medicines, locationsList, ownersList, groupsList, reasonsList,
-        todos, hayingCustomers, hayingBills, hayingBillSettings, homeStatsSettings
+        todos, hayingCustomers, hayingBills, hayingBillSettings, homeStatsSettings, saleSheets
       };
       localStorage.setItem(OFFLINE_CACHE_KEY, JSON.stringify(snapshot));
     }catch(e){
@@ -2274,7 +2282,7 @@
   }
   async function loadAllInner(){
     try{
-      const [cowsRes, treatRes, calvingsRes, notesRes, weightsRes, breedingRes, photosRes, tallyRes, hayingRes, equipmentRes, equipmentListRes, calfTreatRes, calfWeightRes, farmNotesRes, bullsRes, hayingFieldsRes, medicinesRes, locationsRes, ownersRes, groupsRes, reasonsRes, todosRes, hayingCustomersRes, hayingBillsRes, hayingBillSettingsRes, homeStatsSettingsRes] = await Promise.all([
+      const [cowsRes, treatRes, calvingsRes, notesRes, weightsRes, breedingRes, photosRes, tallyRes, hayingRes, equipmentRes, equipmentListRes, calfTreatRes, calfWeightRes, farmNotesRes, bullsRes, hayingFieldsRes, medicinesRes, locationsRes, ownersRes, groupsRes, reasonsRes, todosRes, hayingCustomersRes, hayingBillsRes, hayingBillSettingsRes, homeStatsSettingsRes, saleSheetsRes] = await Promise.all([
         api('/cows?select=*&order=number.asc', { method:'GET' }),
         api('/treatments?select=*', { method:'GET' }),
         api('/calvings?select=*', { method:'GET' }),
@@ -2300,7 +2308,8 @@
         api('/haying_customers?select=*&order=name.asc', { method:'GET' }),
         api('/haying_bills?select=*&order=created_at.desc', { method:'GET' }),
         api('/haying_bill_settings?select=*&limit=1', { method:'GET' }),
-        api('/home_stats_settings?select=*&limit=1', { method:'GET' })
+        api('/home_stats_settings?select=*&limit=1', { method:'GET' }),
+        api('/sale_sheets?select=*&order=sale_date.desc,created_at.desc', { method:'GET' })
       ]);
       cows = cowsRes || [];
       treatments = treatRes || [];
@@ -2328,6 +2337,7 @@
       hayingBills = hayingBillsRes || [];
       hayingBillSettings = (hayingBillSettingsRes && hayingBillSettingsRes[0]) || null;
       homeStatsSettings = (homeStatsSettingsRes && homeStatsSettingsRes[0]) || null;
+      saleSheets = saleSheetsRes || [];
       saveOfflineCache();
       syncPendingWrites();
     }catch(e){
@@ -2359,9 +2369,10 @@
         hayingBills = cached.hayingBills || [];
         hayingBillSettings = cached.hayingBillSettings || null;
         homeStatsSettings = cached.homeStatsSettings || null;
+        saleSheets = cached.saleSheets || [];
         setTimeout(()=> showConnError('No connection — showing saved data from ' + offlineCacheAgeLabel(cached.savedAt) + '.'), 60);
       } else {
-      cows = []; treatments = []; calvings = []; generalNotes = []; weights = []; breedingRecords = []; cowPhotos = []; hayingLog = []; equipmentMaintenance = []; equipmentList = []; calfTreatments = []; calfWeights = []; farmNotes = []; bulls = []; hayingFields = []; medicines = []; locationsList = []; ownersList = []; groupsList = []; reasonsList = []; todos = []; hayingCustomers = []; hayingBills = []; hayingBillSettings = null; homeStatsSettings = null;
+      cows = []; treatments = []; calvings = []; generalNotes = []; weights = []; breedingRecords = []; cowPhotos = []; hayingLog = []; equipmentMaintenance = []; equipmentList = []; calfTreatments = []; calfWeights = []; farmNotes = []; bulls = []; hayingFields = []; medicines = []; locationsList = []; ownersList = []; groupsList = []; reasonsList = []; todos = []; hayingCustomers = []; hayingBills = []; hayingBillSettings = null; homeStatsSettings = null; saleSheets = [];
       }
     }
     renderBullsList();
@@ -2691,6 +2702,8 @@
     const ht = document.getElementById('headerTitle');
     ht.innerHTML = text + (highlight ? ` <span>${highlight}</span>` : '');
     ht.classList.toggle('hidden', !text && !highlight);
+    const ssv = document.getElementById('saleSheetsView');
+    if(ssv) ssv.classList.add('hidden');
   }
   function showHome(){
     currentCow = null;
@@ -2931,6 +2944,210 @@
     renderHayingList();
     window.scrollTo(0,0);
   }
+  // ===== Sale Sheets =====
+  function soldLabel(r){
+    let t = 'Sold';
+    if(r.sold_date) t += ' ' + fmtDateShort(r.sold_date);
+    if(r.sold_to) t += ' to ' + r.sold_to;
+    return escapeHtml(t);
+  }
+  function saleSheetBtnHtml(r){
+    if(!r.sale_sheet_id) return '';
+    const sh = saleSheets.find(x=>x.id === r.sale_sheet_id);
+    if(!sh || !sh.photo_url) return '';
+    return `<button class="btn btn-nav-tool btn-sm view-sale-sheet-btn" data-sheet="${escapeHtml(sh.id)}" style="margin-top:8px;">📋 View Sale Sheet</button>`;
+  }
+  document.addEventListener('click', (e)=>{
+    const b = e.target.closest && e.target.closest('.view-sale-sheet-btn');
+    if(!b) return;
+    e.stopPropagation();
+    const sh = saleSheets.find(x=>x.id === b.dataset.sheet);
+    if(sh) showSaleSheetPhoto(sh);
+  });
+  function showSaleSheetPhoto(sh){
+    const modal = openModal(`
+      <div class="modal-title">Sale Sheet · ${escapeHtml(fmtDate(sh.sale_date))}</div>
+      <img src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;border-radius:10px;border:2px solid var(--ink);margin-bottom:12px;"/>
+      <div class="modal-actions"><button class="btn btn-outline btn-full" id="saleSheetPhotoClose">Close</button></div>
+    `);
+    modal.querySelector('#saleSheetPhotoClose').addEventListener('click', closeModal);
+  }
+  function showSaleSheets(){
+    setHeaderTitle('Sale', 'Sheets');
+    document.querySelectorAll('.view').forEach(v=> v.classList.add('hidden'));
+    document.getElementById('saleSheetsView').classList.remove('hidden');
+    renderSaleSheetsList();
+    window.scrollTo(0,0);
+  }
+  function renderSaleSheetsList(){
+    const el = document.getElementById('saleSheetsList');
+    if(saleSheets.length === 0){
+      el.innerHTML = '<p class="empty" style="padding:10px 0;">No sale sheets yet. Tap New Sale Sheet to add one.</p>';
+      return;
+    }
+    el.innerHTML = saleSheets.map(sh=>{
+      const info = [sh.sale_barn, sh.buyer ? 'Buyer: ' + sh.buyer : ''].filter(Boolean).map(escapeHtml).join(' · ');
+      return `<div class="record">
+        <div class="record-date">${escapeHtml(fmtDate(sh.sale_date))}</div>
+        ${info ? `<div class="record-med">${info}</div>` : ''}
+        ${sh.cow_numbers ? `<div class="record-reason">Mother cows: ${escapeHtml(sh.cow_numbers)}</div>` : ''}
+        ${sh.photo_url ? `<img class="sale-sheet-thumb" data-id="${escapeHtml(sh.id)}" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;cursor:pointer;"/>` : ''}
+        <button class="btn btn-barn btn-sm sale-sheet-del" data-id="${escapeHtml(sh.id)}" style="margin-top:10px;">Delete</button>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.sale-sheet-thumb').forEach(img=> img.addEventListener('click', ()=>{
+      const sh = saleSheets.find(x=>x.id === img.dataset.id);
+      if(sh) showSaleSheetPhoto(sh);
+    }));
+    el.querySelectorAll('.sale-sheet-del').forEach(b=> b.addEventListener('click', ()=> deleteSaleSheet(b.dataset.id)));
+  }
+  async function deleteSaleSheet(id){
+    const sh = saleSheets.find(x=>x.id === id);
+    if(!sh) return;
+    if(!confirm('Delete this sale sheet and its photo? Calves already marked Sold will stay marked Sold.')) return;
+    try{
+      if(sh.storage_path){
+        await fetch(`${SUPABASE_URL}/storage/v1/object/cow-photos/${sh.storage_path}`, {
+          method: 'DELETE',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        });
+      }
+      await api('/sale_sheets?id=eq.' + encodeURIComponent(id), { method:'DELETE' });
+      saleSheets = saleSheets.filter(x=>x.id !== id);
+      calvings = calvings.map(c=> c.sale_sheet_id === id ? Object.assign({}, c, { sale_sheet_id: null }) : c);
+      saveOfflineCache();
+      renderSaleSheetsList();
+      showToast('Sale sheet deleted');
+    }catch(e){
+      console.error(e);
+      showToast('Could not delete — check your signal and try again');
+    }
+  }
+  function saleSheetModal(){
+    const modal = openModal(`
+      <div class="modal-title">New Sale Sheet</div>
+      <div class="field"><label>Sale Date</label><input type="date" id="ssDate" value="${todayLocal()}"/></div>
+      <div class="field"><label>Sale Barn (optional)</label><input type="text" id="ssBarn" placeholder="Sale barn name"/></div>
+      <div class="field"><label>Buyer (optional)</label><input type="text" id="ssBuyer" placeholder="Who bought them"/></div>
+      <div class="field"><label>Photo of Sale Sheet</label><input type="file" id="ssPhoto" accept="image/*"/></div>
+      <div class="field"><label>Mother Cow Numbers Whose Calves Sold</label>
+        <textarea id="ssNumbers" rows="3" placeholder="Example: 214, 215, 216"></textarea>
+      </div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Each cow listed will have her calf marked Sold on her profile. You need phone signal to save.</div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="ssCancel">Cancel</button>
+        <button class="btn btn-pasture" id="ssSave">Save</button>
+      </div>
+    `, { confirmBeforeClose:true, confirmMessage:'Discard this sale sheet?' });
+    modal.querySelector('#ssCancel').addEventListener('click', closeModal);
+    modal.querySelector('#ssSave').addEventListener('click', ()=> saveSaleSheet(modal));
+  }
+  async function saveSaleSheet(modal){
+    const date = modal.querySelector('#ssDate').value;
+    const barn = modal.querySelector('#ssBarn').value.trim();
+    const buyer = modal.querySelector('#ssBuyer').value.trim();
+    const file = modal.querySelector('#ssPhoto').files[0];
+    const raw = modal.querySelector('#ssNumbers').value;
+    if(!date){ showToast('Pick the sale date'); return; }
+    const seen = new Set();
+    const nums = raw.split(/[\s,;]+/).map(n=>n.trim()).filter(Boolean).filter(n=>{ const k=n.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
+    if(!file && nums.length === 0){ showToast('Add a photo or at least one cow number'); return; }
+
+    // 1. Check every number BEFORE saving anything
+    const found = [];
+    const missing = [];
+    nums.forEach(n=>{
+      const cow = cows.find(c=> String(c.number).toLowerCase() === n.toLowerCase());
+      if(cow) found.push(cow); else missing.push(n);
+    });
+    if(missing.length){
+      alert('These numbers are not in your herd: ' + missing.join(', ') + '\n\nNothing was saved. Fix the numbers and tap Save again.');
+      return;
+    }
+
+    // 2. Decide which calf for each cow (asking when needed)
+    const plan = [];
+    const problems = [];
+    for(const cow of found){
+      const all = calvingsFor(cow.number).filter(c=>!c.promoted_to_cow_number).sort((a,b)=> b.calving_date.localeCompare(a.calving_date));
+      const active = all.filter(c=>!c.calf_outcome);
+      if(all.length === 0){ problems.push(`#${cow.number} has no calf on file`); continue; }
+      let calving = null;
+      if(active.length === 1) calving = active[0];
+      else if(active.length > 1){
+        calving = await chooseCalf(active, `#${cow.number} has more than one current calf. Pick the one that sold.`);
+        if(!calving) return; // cancelled — nothing saved
+      } else {
+        const last = all[0];
+        const what = last.calf_outcome === 'sold' ? 'already marked Sold' : last.calf_outcome === 'died' ? 'marked Died' : `marked "${last.calf_outcome}"`;
+        if(!confirm(`#${cow.number}'s calf is ${what}. Change it to Sold on ${fmtDateShort(date)}?`)) return;
+        calving = last;
+      }
+      plan.push({ cow, calving });
+    }
+    if(problems.length){
+      alert('Cannot save yet:\n' + problems.join('\n') + '\n\nNothing was saved. Remove those numbers and tap Save again.');
+      return;
+    }
+
+    const btn = modal.querySelector('#ssSave');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try{
+      // 3. Upload photo
+      let storagePath = null, photoUrl = null;
+      if(file){
+        const blob = await compressImageFile(file);
+        storagePath = `sale-sheets/${Date.now()}.jpg`;
+        const up = await fetch(`${SUPABASE_URL}/storage/v1/object/cow-photos/${storagePath}`, {
+          method: 'POST',
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'image/jpeg' },
+          body: blob
+        });
+        if(!up.ok) throw new Error('Photo upload failed');
+        photoUrl = `${SUPABASE_URL}/storage/v1/object/public/cow-photos/${storagePath}`;
+      }
+      // 4. Save the sheet
+      const inserted = await api('/sale_sheets', {
+        method:'POST',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify({
+          sale_date: date, sale_barn: barn || null, buyer: buyer || null,
+          storage_path: storagePath, photo_url: photoUrl,
+          cow_numbers: found.map(c=>c.number).join(', ') || null
+        })
+      });
+      const sheet = inserted[0];
+      saleSheets.unshift(sheet);
+      saleSheets.sort((a,b)=> (b.sale_date||'').localeCompare(a.sale_date||'') || (b.created_at||'').localeCompare(a.created_at||''));
+      // 5. Mark each calf sold
+      const failed = [];
+      for(const item of plan){
+        try{
+          const body = { calf_outcome:'sold', sold_date:date, sold_to: buyer || null, sale_sheet_id: sheet.id };
+          const upd = await api('/calvings?id=eq.' + encodeURIComponent(item.calving.id), {
+            method:'PATCH',
+            headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+            body: JSON.stringify(body)
+          });
+          const idx = calvings.findIndex(c=>c.id === item.calving.id);
+          if(idx !== -1 && upd && upd[0]) calvings[idx] = upd[0];
+        }catch(err){ failed.push(item.cow.number); }
+      }
+      saveOfflineCache();
+      closeModal();
+      renderSaleSheetsList();
+      if(typeof renderProfileList === 'function') try{ renderProfileList(); }catch(e){}
+      if(failed.length) alert('The sale sheet was saved, but these cows were NOT marked sold: ' + failed.join(', ') + '\n\nCheck your signal, then mark those calves Sold from the cow profile.');
+      else showToast(`Saved — ${plan.length} calf${plan.length === 1 ? '' : 'ves'} marked Sold`);
+    }catch(e){
+      console.error(e);
+      btn.disabled = false;
+      btn.textContent = 'Save';
+      showToast('Could not save — check your signal and try again');
+    }
+  }
+
   function showFarmNotes(){
     setHeaderTitle('Farm', 'Notes');
     homeView.classList.add('hidden');
@@ -4659,7 +4876,7 @@
       if(r.birth_weight != null) details.push(`${r.birth_weight} lbs`);
       if(r.sire) details.push(`Sire: ${escapeHtml(r.sire)}`);
       if(r.birth_assist && r.birth_assist !== 'None') details.push(escapeHtml(r.birth_assist));
-      const outcomeLabel = r.calf_outcome === 'sold' ? 'Sold' : r.calf_outcome === 'died' ? 'Died' : null;
+      const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? 'Died' : null;
       div.innerHTML = `
         <button class="record-del" data-id="${r.id}">&times;</button>
         ${r._pendingSync ? '' : `<button class="record-edit" data-id="${r.id}">&#9998;</button>`}
@@ -4672,7 +4889,7 @@
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
         ${r.promoted_to_cow_number
           ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#3C9142;">✓ ${r.calf_outcome === 'bull' ? 'Kept as bull' : 'Promoted to'} #${escapeHtml(r.promoted_to_cow_number)}</div>`
-          : `${outcomeLabel ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#A05A2C;">${outcomeLabel}</div>` : ''}${r._pendingSync ? '' : `<button class="btn btn-nav-tool btn-sm calf-record-btn" data-id="${r.id}" style="margin-top:8px;">🐄 Calf Record</button>`}`}
+          : `${outcomeLabel ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#A05A2C;">${outcomeLabel}</div>${saleSheetBtnHtml(r)}` : ''}${r._pendingSync ? '' : `<button class="btn btn-nav-tool btn-sm calf-record-btn" data-id="${r.id}" style="margin-top:8px;">🐄 Calf Record</button>`}`}
       `;
       div.querySelector('.calf-record-btn')?.addEventListener('click', (e)=>{
         e.stopPropagation();
@@ -5800,7 +6017,7 @@
           if(r.birth_weight != null) details.push(`${r.birth_weight} lbs`);
           if(r.sire) details.push(`Sire: ${escapeHtml(r.sire)}`);
           if(r.birth_assist && r.birth_assist !== 'None') details.push(escapeHtml(r.birth_assist));
-          const outcomeLabel = r.calf_outcome === 'sold' ? 'Sold' : r.calf_outcome === 'died' ? 'Died' : null;
+          const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? 'Died' : null;
           return `<div class="record has-tools">
             ${profileRecordTools(r, 'calving')}
             <div class="record-date">${fmtDate(r.calving_date)}</div>
@@ -5810,7 +6027,7 @@
             ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
             ${r.promoted_to_cow_number
               ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#3C9142;">✓ ${r.calf_outcome === 'bull' ? 'Kept as bull' : 'Promoted to'} #${escapeHtml(r.promoted_to_cow_number)}</div>`
-              : `${outcomeLabel ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#A05A2C;">${outcomeLabel}</div>` : ''}${r._pendingSync ? '' : `<button class="btn btn-nav-tool btn-sm calf-record-btn" data-id="${escapeHtml(r.id)}" style="margin-top:8px;">🐄 Calf Record</button>`}`}
+              : `${outcomeLabel ? `<div style="margin-top:8px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#A05A2C;">${outcomeLabel}</div>${saleSheetBtnHtml(r)}` : ''}${r._pendingSync ? '' : `<button class="btn btn-nav-tool btn-sm calf-record-btn" data-id="${escapeHtml(r.id)}" style="margin-top:8px;">🐄 Calf Record</button>`}`}
           </div>`;
         }).join('');
 
@@ -8528,6 +8745,9 @@
   document.getElementById('addCustomAIJobBtn').addEventListener('click', ()=> customAIJobModal(null));
   document.getElementById('manageCustomAICustomersBtn').addEventListener('click', manageCustomAICustomersModal);
   document.getElementById('homeFarmNotesBtn').addEventListener('click', showFarmNotes);
+  document.getElementById('homeSaleSheetsBtn').addEventListener('click', showSaleSheets);
+  document.getElementById('saleSheetsHomeBtn').addEventListener('click', showHome);
+  document.getElementById('newSaleSheetBtn').addEventListener('click', saleSheetModal);
   document.getElementById('farmNotesHomeBtn').addEventListener('click', showHome);
   document.getElementById('addFarmNoteBtn').addEventListener('click', ()=> farmNoteModal(null));
   document.getElementById('homeLoanCalcBtn').addEventListener('click', showLoanCalculator);
@@ -13625,11 +13845,11 @@
     document.getElementById('qcwSaveBtn').textContent = qcwWeaningOn ? 'Save Weaning & Next' : 'Save & Next';
   }
   // if a cow has more than one current calf (twins), ask which one was weighed
-  function chooseCalf(candidates){
+  function chooseCalf(candidates, msg){
     return new Promise(resolve=>{
       const modal = openModal(`
         <div class="modal-title">Which calf?</div>
-        <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:12px;">This cow has more than one current calf. Pick the one you just weighed.</div>
+        <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:12px;">${escapeHtml(msg || 'This cow has more than one current calf. Pick the one you just weighed.')}</div>
         ${candidates.map((c,i)=>`<button class="btn btn-nav-tool btn-full pick-calf" data-i="${i}" style="margin-bottom:8px;">${escapeHtml(calfSexLabel(c.calf_sex))} calf, born ${escapeHtml(fmtDate(c.calving_date))}${c.birth_weight ? ', ' + escapeHtml(String(c.birth_weight)) + ' lbs' : ''}</button>`).join('')}
         <div class="modal-actions"><button class="btn btn-outline btn-full" id="pickCalfCancel">Cancel</button></div>
       `);

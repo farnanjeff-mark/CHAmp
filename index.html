@@ -2988,13 +2988,14 @@
     el.innerHTML = saleSheets.map(sh=>{
       const info = [sh.sale_barn, sh.buyer ? 'Buyer: ' + sh.buyer : ''].filter(Boolean).map(escapeHtml).join(' · ');
       return `<div class="record">
+        <button class="record-del sale-sheet-del" data-id="${escapeHtml(sh.id)}">&times;</button>
+        <button class="record-edit sale-sheet-edit" data-id="${escapeHtml(sh.id)}">&#9998;</button>
         <div class="record-date">${escapeHtml(fmtDate(sh.sale_date))}</div>
         ${info ? `<div class="record-med">${info}</div>` : ''}
         ${sh.total_price != null ? `<div class="record-med" style="color:#3C9142;">Total: ${escapeHtml(Number(sh.total_price).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:(Number(sh.total_price)%1===0?0:2)}))}</div>` : ''}
         ${sh.animal_numbers ? `<div class="record-reason">Animals sold: ${escapeHtml(sh.animal_numbers)}</div>` : ''}
         ${sh.cow_numbers ? `<div class="record-reason">Mother cows (calves sold): ${escapeHtml(sh.cow_numbers)}</div>` : ''}
         ${sh.photo_url ? `<img class="sale-sheet-thumb" data-id="${escapeHtml(sh.id)}" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;cursor:pointer;"/>` : ''}
-        <button class="btn btn-barn btn-sm sale-sheet-del" data-id="${escapeHtml(sh.id)}" style="margin-top:10px;">Delete</button>
       </div>`;
     }).join('');
     el.querySelectorAll('.sale-sheet-thumb').forEach(img=> img.addEventListener('click', ()=>{
@@ -3002,6 +3003,7 @@
       if(sh) showSaleSheetPhoto(sh);
     }));
     el.querySelectorAll('.sale-sheet-del').forEach(b=> b.addEventListener('click', ()=> deleteSaleSheet(b.dataset.id)));
+    el.querySelectorAll('.sale-sheet-edit').forEach(b=> b.addEventListener('click', ()=> editSaleSheetModal(b.dataset.id)));
   }
   async function deleteSaleSheet(id){
     const sh = saleSheets.find(x=>x.id === id);
@@ -3024,6 +3026,55 @@
       console.error(e);
       showToast('Could not delete — check your signal and try again');
     }
+  }
+  function editSaleSheetModal(id){
+    const sh = saleSheets.find(x=>x.id === id);
+    if(!sh) return;
+    const modal = openModal(`
+      <div class="modal-title">Edit Sale Sheet</div>
+      <div class="field"><label>Sale Date</label><input type="date" id="esDate" value="${escapeHtml(sh.sale_date || '')}"/></div>
+      <div class="field"><label>Sale Barn</label><input type="text" id="esBarn" value="${escapeHtml(sh.sale_barn || '')}"/></div>
+      <div class="field"><label>Buyer</label><input type="text" id="esBuyer" value="${escapeHtml(sh.buyer || '')}"/></div>
+      <div class="field"><label>Total Price ($)</label><input type="number" id="esPrice" inputmode="decimal" step="0.01" min="0" value="${sh.total_price != null ? escapeHtml(String(sh.total_price)) : ''}"/></div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Changing the date or buyer also updates the animals and calves on this sale. You need phone signal to save.</div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="esCancel">Cancel</button>
+        <button class="btn btn-pasture" id="esSave">Save</button>
+      </div>
+    `);
+    modal.querySelector('#esCancel').addEventListener('click', closeModal);
+    modal.querySelector('#esSave').addEventListener('click', async ()=>{
+      const date = modal.querySelector('#esDate').value;
+      const barn = modal.querySelector('#esBarn').value.trim();
+      const buyer = modal.querySelector('#esBuyer').value.trim();
+      const pr = modal.querySelector('#esPrice').value.trim();
+      const price = pr === '' ? null : Number(pr);
+      if(!date){ showToast('Pick the sale date'); return; }
+      if(price !== null && (isNaN(price) || price < 0)){ showToast('Enter the price as a number'); return; }
+      const btn = modal.querySelector('#esSave');
+      btn.disabled = true;
+      try{
+        const hdr = Object.assign({}, HEADERS, {'Prefer':'return=representation'});
+        const upd = await api('/sale_sheets?id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr,
+          body: JSON.stringify({ sale_date: date, sale_barn: barn || null, buyer: buyer || null, total_price: price }) });
+        const common = { sold_date: date, sold_to: buyer || null };
+        const calvUpd = await api('/calvings?sale_sheet_id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr, body: JSON.stringify(common) });
+        const cowUpd = await api('/cows?sale_sheet_id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr, body: JSON.stringify(common) });
+        const i = saleSheets.findIndex(x=>x.id === id);
+        if(i !== -1 && upd && upd[0]) saleSheets[i] = upd[0];
+        saleSheets.sort((a,b)=> (b.sale_date||'').localeCompare(a.sale_date||'') || (b.created_at||'').localeCompare(a.created_at||''));
+        (calvUpd||[]).forEach(u=>{ const k = calvings.findIndex(c=>c.id === u.id); if(k !== -1) calvings[k] = u; });
+        (cowUpd||[]).forEach(u=>{ const k = cows.findIndex(c=>c.number === u.number); if(k !== -1) cows[k] = u; });
+        saveOfflineCache();
+        closeModal();
+        renderSaleSheetsList();
+        showToast('Sale sheet updated');
+      }catch(e){
+        console.error(e);
+        btn.disabled = false;
+        showToast('Could not save — check your signal and try again');
+      }
+    });
   }
   function saleSheetModal(){
     const modal = openModal(`

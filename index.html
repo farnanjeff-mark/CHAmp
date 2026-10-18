@@ -2990,6 +2990,7 @@
       return `<div class="record">
         <div class="record-date">${escapeHtml(fmtDate(sh.sale_date))}</div>
         ${info ? `<div class="record-med">${info}</div>` : ''}
+        ${sh.total_price != null ? `<div class="record-med" style="color:#3C9142;">Total: ${escapeHtml(Number(sh.total_price).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:(Number(sh.total_price)%1===0?0:2)}))}</div>` : ''}
         ${sh.animal_numbers ? `<div class="record-reason">Animals sold: ${escapeHtml(sh.animal_numbers)}</div>` : ''}
         ${sh.cow_numbers ? `<div class="record-reason">Mother cows (calves sold): ${escapeHtml(sh.cow_numbers)}</div>` : ''}
         ${sh.photo_url ? `<img class="sale-sheet-thumb" data-id="${escapeHtml(sh.id)}" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;cursor:pointer;"/>` : ''}
@@ -3030,6 +3031,7 @@
       <div class="field"><label>Sale Date</label><input type="date" id="ssDate" value="${todayLocal()}"/></div>
       <div class="field"><label>Sale Barn (optional)</label><input type="text" id="ssBarn" placeholder="Sale barn name"/></div>
       <div class="field"><label>Buyer (optional)</label><input type="text" id="ssBuyer" placeholder="Who bought them"/></div>
+      <div class="field"><label>Total Price for This Sale ($)</label><input type="number" id="ssPrice" inputmode="decimal" step="0.01" min="0" placeholder="Example: 18000"/></div>
       <div class="field"><label>Photo of Sale Sheet</label><input type="file" id="ssPhoto" accept="image/*"/></div>
       <div class="field"><label>Animals Sold by Their Own Number (heifers, cows, bulls)</label>
         <textarea id="ssAnimals" rows="2" placeholder="Example: 301, 302, 303"></textarea>
@@ -3051,6 +3053,9 @@
     const barn = modal.querySelector('#ssBarn').value.trim();
     const buyer = modal.querySelector('#ssBuyer').value.trim();
     const file = modal.querySelector('#ssPhoto').files[0];
+    const priceRaw = modal.querySelector('#ssPrice').value.trim();
+    const price = priceRaw === '' ? null : Number(priceRaw);
+    if(price !== null && (isNaN(price) || price < 0)){ showToast('Enter the price as a number'); return; }
     const raw = modal.querySelector('#ssNumbers').value;
     if(!date){ showToast('Pick the sale date'); return; }
     const seen = new Set();
@@ -3135,7 +3140,8 @@
           sale_date: date, sale_barn: barn || null, buyer: buyer || null,
           storage_path: storagePath, photo_url: photoUrl,
           cow_numbers: found.map(c=>c.number).join(', ') || null,
-          animal_numbers: animals.map(c=>c.number).join(', ') || null
+          animal_numbers: animals.map(c=>c.number).join(', ') || null,
+          total_price: price
         })
       });
       const sheet = inserted[0];

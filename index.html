@@ -2990,7 +2990,8 @@
       return `<div class="record">
         <div class="record-date">${escapeHtml(fmtDate(sh.sale_date))}</div>
         ${info ? `<div class="record-med">${info}</div>` : ''}
-        ${sh.cow_numbers ? `<div class="record-reason">Mother cows: ${escapeHtml(sh.cow_numbers)}</div>` : ''}
+        ${sh.animal_numbers ? `<div class="record-reason">Animals sold: ${escapeHtml(sh.animal_numbers)}</div>` : ''}
+        ${sh.cow_numbers ? `<div class="record-reason">Mother cows (calves sold): ${escapeHtml(sh.cow_numbers)}</div>` : ''}
         ${sh.photo_url ? `<img class="sale-sheet-thumb" data-id="${escapeHtml(sh.id)}" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;cursor:pointer;"/>` : ''}
         <button class="btn btn-barn btn-sm sale-sheet-del" data-id="${escapeHtml(sh.id)}" style="margin-top:10px;">Delete</button>
       </div>`;
@@ -3030,10 +3031,13 @@
       <div class="field"><label>Sale Barn (optional)</label><input type="text" id="ssBarn" placeholder="Sale barn name"/></div>
       <div class="field"><label>Buyer (optional)</label><input type="text" id="ssBuyer" placeholder="Who bought them"/></div>
       <div class="field"><label>Photo of Sale Sheet</label><input type="file" id="ssPhoto" accept="image/*"/></div>
+      <div class="field"><label>Animals Sold by Their Own Number (heifers, cows, bulls)</label>
+        <textarea id="ssAnimals" rows="2" placeholder="Example: 301, 302, 303"></textarea>
+      </div>
       <div class="field"><label>Mother Cow Numbers Whose Calves Sold</label>
         <textarea id="ssNumbers" rows="3" placeholder="Example: 214, 215, 216"></textarea>
       </div>
-      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Each cow listed will have her calf marked Sold on her profile. You need phone signal to save.</div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Animals listed are marked Sold. Each mother cow listed has her calf marked Sold on her profile. You need phone signal to save.</div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="ssCancel">Cancel</button>
         <button class="btn btn-pasture" id="ssSave">Save</button>
@@ -3051,7 +3055,23 @@
     if(!date){ showToast('Pick the sale date'); return; }
     const seen = new Set();
     const nums = raw.split(/[\s,;]+/).map(n=>n.trim()).filter(Boolean).filter(n=>{ const k=n.toLowerCase(); if(seen.has(k)) return false; seen.add(k); return true; });
-    if(!file && nums.length === 0){ showToast('Add a photo or at least one cow number'); return; }
+    const seenA = new Set();
+    const animalNums = modal.querySelector('#ssAnimals').value.split(/[\s,;]+/).map(n=>n.trim()).filter(Boolean).filter(n=>{ const k=n.toLowerCase(); if(seenA.has(k)) return false; seenA.add(k); return true; });
+    if(!file && nums.length === 0 && animalNums.length === 0){ showToast('Add a photo or at least one number'); return; }
+    const animals = [];
+    const missingA = [];
+    animalNums.forEach(n=>{
+      const cow = cows.find(c=> String(c.number).toLowerCase() === n.toLowerCase());
+      if(cow) animals.push(cow); else missingA.push(n);
+    });
+    if(missingA.length){
+      alert('These animal numbers are not in your herd: ' + missingA.join(', ') + '\n\nNothing was saved. Fix the numbers and tap Save again.');
+      return;
+    }
+    for(const a of animals){
+      if(a.status === 'Sold' && !confirm(`#${a.number} is already marked Sold. Update it with this sale (${fmtDateShort(date)}${buyer ? ' to ' + buyer : ''})?`)) return;
+      if(a.status === 'Deceased' && !confirm(`#${a.number} is marked Deceased. Change it to Sold?`)) return;
+    }
 
     // 1. Check every number BEFORE saving anything
     const found = [];
@@ -3114,7 +3134,8 @@
         body: JSON.stringify({
           sale_date: date, sale_barn: barn || null, buyer: buyer || null,
           storage_path: storagePath, photo_url: photoUrl,
-          cow_numbers: found.map(c=>c.number).join(', ') || null
+          cow_numbers: found.map(c=>c.number).join(', ') || null,
+          animal_numbers: animals.map(c=>c.number).join(', ') || null
         })
       });
       const sheet = inserted[0];
@@ -3134,12 +3155,26 @@
           if(idx !== -1 && upd && upd[0]) calvings[idx] = upd[0];
         }catch(err){ failed.push(item.cow.number); }
       }
+      for(const a of animals){
+        try{
+          const body = { status:'Sold', sold_date:date, sold_to: buyer || null, sale_sheet_id: sheet.id };
+          const upd = await api('/cows?number=eq.' + encodeURIComponent(a.number), {
+            method:'PATCH',
+            headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+            body: JSON.stringify(body)
+          });
+          const idx = cows.findIndex(c=>c.number === a.number);
+          if(idx !== -1 && upd && upd[0]) cows[idx] = upd[0];
+        }catch(err){ failed.push(a.number); }
+      }
+      const homeTotalEl = document.getElementById('homeTotalCattle');
+      if(homeTotalEl) homeTotalEl.textContent = cows.filter(isActiveStatus).length;
       saveOfflineCache();
       closeModal();
       renderSaleSheetsList();
       if(typeof renderProfileList === 'function') try{ renderProfileList(); }catch(e){}
-      if(failed.length) alert('The sale sheet was saved, but these cows were NOT marked sold: ' + failed.join(', ') + '\n\nCheck your signal, then mark those calves Sold from the cow profile.');
-      else showToast(`Saved — ${plan.length} calf${plan.length === 1 ? '' : 'ves'} marked Sold`);
+      if(failed.length) alert('The sale sheet was saved, but these were NOT marked sold: ' + failed.join(', ') + '\n\nCheck your signal, then mark them Sold from their profiles.');
+      else showToast(`Saved — ${plan.length + animals.length} marked Sold`);
     }catch(e){
       console.error(e);
       btn.disabled = false;
@@ -13904,7 +13939,17 @@
     const el = document.getElementById('profileOrigin');
     if(!el) return;
     const c = calvings.find(r=> r.promoted_to_cow_number != null && String(r.promoted_to_cow_number) === String(num));
-    if(!c){ el.innerHTML = ''; return; }
+    const me = cows.find(x=> String(x.number) === String(num));
+    let soldBox = '';
+    if(me && me.status === 'Sold' && (me.sold_date || me.sold_to || me.sale_sheet_id)){
+      const sh = me.sale_sheet_id ? saleSheets.find(x=>x.id === me.sale_sheet_id) : null;
+      const t = 'Sold' + (me.sold_date ? ' ' + fmtDateShort(me.sold_date) : '') + (me.sold_to ? ' to ' + me.sold_to : '');
+      soldBox = `<div style="background:#FFFFFF;border:1.5px solid #c9bfa4;border-left:6px solid #A05A2C;border-radius:2px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-size:16px;font-weight:700;color:#A05A2C;">${escapeHtml(t)}</div>
+        ${sh && sh.photo_url ? `<button class="btn btn-nav-tool btn-sm view-sale-sheet-btn" data-sheet="${escapeHtml(sh.id)}" style="margin-top:8px;">📋 View Sale Sheet</button>` : ''}
+      </div>`;
+    }
+    if(!c){ el.innerHTML = soldBox; return; }
     const born = [`${c.calf_outcome === 'bull' ? 'Kept as a bull · ' : ''}Born ${fmtDateShort(c.calving_date)} to #${escapeHtml(c.cow_number)}`];
     if(c.sire) born.push(`Sire: ${escapeHtml(c.sire)}`);
     if(c.birth_weight != null && Number(c.birth_weight) > 0) born.push(`${escapeHtml(String(c.birth_weight))} lbs at birth`);
@@ -13913,7 +13958,7 @@
       <div style="font-family:Arial,sans-serif;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#0C447C;font-weight:700;">Born &amp; weaned</div>
       <div style="font-size:16px;font-weight:700;margin:4px 0 2px;">${born.join(' · ')}</div>
       <div style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${wean ? '#3C9142' : '#6b6350'};">${wean ? escapeHtml(wean) : 'No weaning weight recorded'}</div>
-    </div>`;
+    </div>` + soldBox;
   }
 
   // AI Search was removed: clear its saved columns and searches from this phone

@@ -795,7 +795,6 @@
 
     <div class="section-label">Herd Reports</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button class="btn" id="biggestGainersBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📈</span>Biggest Gainers</button>
       <button class="btn" id="calvingReportBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐮</span>Calving Report</button>
     </div>
 
@@ -1167,6 +1166,21 @@
         </div>
       </div>
       <div class="adv-note">Uses her most recent weight (inside the date range below, if you set one).</div>
+      <div class="row2">
+        <div class="field">
+          <label>Total Gain Min (lbs)</label>
+          <input type="number" id="advSearchCowGainMin" step="0.1" placeholder="Any"/>
+        </div>
+        <div class="field">
+          <label>Total Gain Max (lbs)</label>
+          <input type="number" id="advSearchCowGainMax" step="0.1" placeholder="Any"/>
+        </div>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="advSearchTwoWeights" style="width:20px;height:20px;"/>
+        <label style="margin:0;" for="advSearchTwoWeights">Only cows with at least two weights (so a gain can be figured)</label>
+      </div>
+      <div class="adv-note">Gain = her latest weight minus her first weight on file. Use Sort below to rank cows by Total weight gain.</div>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" id="advSearchMissingWeight" style="width:20px;height:20px;"/>
         <label style="margin:0;" for="advSearchMissingWeight">Missing a weight (active cows with no weight on file)</label>
@@ -9118,7 +9132,6 @@
   document.getElementById('globalSearchBox').addEventListener('input', renderGlobalSearchResults);
   document.getElementById('globalSearchPrintBtn').addEventListener('click', printGlobalSearchResults);
   document.getElementById('recentlyDeletedBtn').addEventListener('click', showRecentlyDeleted);
-  document.getElementById('biggestGainersBtn').addEventListener('click', biggestGainersModal);
   document.getElementById('calvingReportBtn').addEventListener('click', calvingReportModal);
   document.getElementById('recentlyDeletedHomeBtn').addEventListener('click', showHome);
   document.getElementById('importHomeBtn').addEventListener('click', showHome);
@@ -11965,7 +11978,12 @@
       { id:'weights', label:'Weights', cols:[
         { key:'w_last', label:'Latest Weight (lbs)', get:(r,x)=> x.lw ? String(x.lw.weight) : '' },
         { key:'w_lastdate', label:'Weigh Date', get:(r,x)=> x.lw ? advFmtD(x.lw.weigh_date) : '' },
-        { key:'w_count', label:'# Weights', get:(r,x)=> String(x.wr.length) }
+        { key:'w_count', label:'# Weights', get:(r,x)=> String(x.wr.length) },
+        { key:'w_first', label:'First Weight (lbs)', get:(r,x)=> x.gainInfo ? String(x.gainInfo.first.weight) : '' },
+        { key:'w_firstdate', label:'First Weigh Date', get:(r,x)=> x.gainInfo ? advFmtD(x.gainInfo.first.weigh_date) : '' },
+        { key:'w_days', label:'Days Between Weighs', get:(r,x)=> x.gainInfo ? String(x.gainInfo.days) : '' },
+        { key:'w_tgain', label:'Total Gain (lbs)', get:(r,x)=> x.gainInfo ? String(Math.round(x.gainInfo.total * 10) / 10) : '' },
+        { key:'w_adg', label:'Gain / Day (lbs)', get:(r,x)=> x.gainInfo ? x.gainInfo.adg.toFixed(2) : '' }
       ]},
       { id:'notes', label:'Notes (latest of each kind)', cols:[
         { key:'n_gen', label:'General Note', get:(r,x)=> advNoteTxt(advLatestBy(x.gn, 'note_date'), 'note_date', 'note') },
@@ -12039,6 +12057,8 @@
       { key:'due',  label:'Due date (latest breeding)',  type:'date', get:(r,x)=> x.br && x.br.pregnancy_status !== 'Open' ? (x.br.expected_due_date || '') : '' },
       { key:'wdate2',label:'Weigh date (latest)',        type:'date', get:(r,x)=> x.lw ? x.lw.weigh_date : '' },
       { key:'wt',   label:'Weight (latest)',             type:'num',  get:(r,x)=> x.lw ? advNumOrNull(x.lw.weight) : null },
+      { key:'tgain',label:'Total weight gain (her own)', type:'num',  get:(r,x)=> x.gainInfo ? x.gainInfo.total : null },
+      { key:'adg',  label:'Gain per day (her own)',      type:'num',  get:(r,x)=> x.gainInfo ? x.gainInfo.adg : null },
       { key:'tdate',label:'Treatment date (last)',       type:'date', get:(r,x)=> x.lt ? x.lt.date : '' },
       { key:'ntreat',label:'Number of treatments',       type:'num',  get:(r,x)=> x.tr.length },
       { key:'ww',   label:'Weaning weight (latest calf)',type:'num',  get:(r,x)=> x.lc && weaningStats(x.lc) ? weaningStats(x.lc).weight : null },
@@ -12150,6 +12170,15 @@
   function advSaveCols(){ try{ localStorage.setItem(ADV_COLS_KEY, JSON.stringify(advCols)); }catch(e){} }
   function advColumnSelected(mode, key){ return advCols[mode].includes(key); }
   function advActiveColumns(mode){ return advAllCols(mode).filter(c=> advCols[mode].includes(c.key)); }
+  // a cow's own gain: first weigh-in to latest weigh-in (needs at least two dated weights)
+  function advGainInfo(wr){
+    const w = wr.filter(r=> r.weight != null && r.weigh_date).sort((a,b)=> a.weigh_date.localeCompare(b.weigh_date));
+    if(w.length < 2) return null;
+    const first = w[0], last = w[w.length - 1];
+    const days = Math.max(1, Math.round((new Date(last.weigh_date + 'T00:00:00') - new Date(first.weigh_date + 'T00:00:00')) / 86400000));
+    const total = Number(last.weight) - Number(first.weight);
+    return { first, last, days, total, adg: total / days };
+  }
   function advBuildCowFacts(c){
     const num = c.number;
     const cvs = calvingsFor(num);
@@ -12160,7 +12189,7 @@
       lc: advLatestBy(cvs, 'calving_date'),
       ncv: cvs.length,
       tr, lt: advLatestBy(tr, 'date'),
-      wr, lw: advLatestBy(wr, 'weigh_date'),
+      wr, lw: advLatestBy(wr, 'weigh_date'), gainInfo: advGainInfo(wr),
       gn: generalNotesFor(num).filter(n=> (n.note||'').trim()),
       mn: recordsFor(num).filter(t=> (t.notes||'').trim()),
       wn: weightsFor(num).filter(w=> (w.notes||'').trim()),
@@ -12211,7 +12240,7 @@
     advSearchTagNeeded:'Tag needed', advSearchFlagged:'Flagged', advSearchCalvedPending:'Calved pending', advSearchOutOfCow:'Out of cow #', advSearchMotherNum:'Mother #',
     advSearchBredTo:'Bred to', advSearchMethod:'Method', advSearchNaturalSire:'Natural sire', advSearchOpenOnly:'Open cows', advSearchPregBtOnly:'Preg BT', advSearchSellOnly:'Sell', advSearchPregCheck:'Preg check', advSearchNotCalved:'Not calved yet', advSearchDueWithin:'Due within', advSearchUnchecked:'Not preg-checked',
     advSearchMedicine:'Medicine', advSearchReason:'Reason', advSearchMinTimes:'Times treated', advSearchSameReason:'Same reason',
-    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight',
+    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight', advSearchCowGainMin:'Weight gain', advSearchCowGainMax:'Weight gain', advSearchTwoWeights:'2+ weights',
     advSearchCalfSire:'Sire', advSearchCalfSex:'Sex', advSearchBirthAssist:'Birth assist', advSearchCalfOutcome:'Outcome', advSearchGrafted:'Grafted', advSearchWeightMin:'Birth weight', advSearchWeightMax:'Birth weight',
     advSearchWeaned:'Weaned', advSearchWeanWtMin:'Weaning weight', advSearchWeanWtMax:'Weaning weight', advSearchGainMin:'Gain/day', advSearchGainMax:'Gain/day',
     advSearchWeanAgeMin:'Age at weaning', advSearchWeanAgeMax:'Age at weaning', advSearchWeanFrom:'Weaned dates', advSearchWeanTo:'Weaned dates',
@@ -12255,6 +12284,7 @@
   // what a tile says for each chosen field: the actual choice (North, Hard Pull...), and ranges for min/max pairs
   const ADV_PAIR = {
     advSearchCowWtMin:['Weight','min'], advSearchCowWtMax:['Weight','max'],
+    advSearchCowGainMin:['Gain','min'], advSearchCowGainMax:['Gain','max'],
     advSearchWeightMin:['Birth wt','min'], advSearchWeightMax:['Birth wt','max'],
     advSearchWeanWtMin:['Weaning wt','min'], advSearchWeanWtMax:['Weaning wt','max'],
     advSearchGainMin:['Gain','min'], advSearchGainMax:['Gain','max'],
@@ -12433,10 +12463,13 @@
     const weanFrom = document.getElementById('advSearchWeanFrom').value;
     const weanTo = document.getElementById('advSearchWeanTo').value;
     const cowWtMin = numVal('advSearchCowWtMin'), cowWtMax = numVal('advSearchCowWtMax');
+    const cowGainMin = numVal('advSearchCowGainMin'), cowGainMax = numVal('advSearchCowGainMax');
+    const twoWeights = document.getElementById('advSearchTwoWeights').checked;
     const missingWeight = document.getElementById('advSearchMissingWeight').checked;
 
     const weaningFieldsUsed = !!(weaned || wwMin != null || wwMax != null || gainMin != null || gainMax != null || ageMin != null || ageMax != null || weanFrom || weanTo);
     const weightFieldsUsed = cowWtMin != null || cowWtMax != null;
+    const gainFieldsUsed = cowGainMin != null || cowGainMax != null || twoWeights;
     const breedingFieldsUsed = bredTo || method || naturalSire || openOnly || pregCheck;
     const medFieldsUsed = medicine || reason || minTimes != null;
     const calvingFieldsUsed = calfSire || calfSex || birthAssist || calfOutcome || graftedSel || weightMin != null || weightMax != null || weaningFieldsUsed || (advMode === 'calf' && !!(dateFrom || dateTo));
@@ -12567,6 +12600,12 @@
       if(outOfCow && !calvings.some(k=> k.cow_number === outOfCow && k.promoted_to_cow_number === c.number)) return false;
       if(missingWeight && !(isActiveStatus(c) && !weightsFor(c.number).some(w=> w.weight != null))) return false;
       if(weightFieldsUsed && matchingWeightRecords(c.number).length === 0) return false;
+      if(gainFieldsUsed){
+        const gi = advGainInfo(weightsFor(c.number).filter(w=> w.weight != null));
+        if(!gi) return false;
+        if(cowGainMin != null && gi.total < cowGainMin) return false;
+        if(cowGainMax != null && gi.total > cowGainMax) return false;
+      }
       if(breedingFieldsUsed && matchingBreedingRecords(c.number).length === 0) return false;
       if(medFieldsUsed){
         const mr = matchingMedRecords(c.number);
@@ -12574,7 +12613,7 @@
         else if(mr.length === 0 && matchingCalfMedRecords(c.number).length === 0) return false;
       }
       if(calvingFieldsUsed && matchingCalvingRecords(c.number).length === 0) return false;
-      if(!breedingFieldsUsed && !medFieldsUsed && !calvingFieldsUsed && !weightFieldsUsed && (dateFrom || dateTo) && !cowHasActivityInDateRange(c.number, dateFrom, dateTo)) return false;
+      if(!breedingFieldsUsed && !medFieldsUsed && !calvingFieldsUsed && !weightFieldsUsed && !gainFieldsUsed && (dateFrom || dateTo) && !cowHasActivityInDateRange(c.number, dateFrom, dateTo)) return false;
       return true;
     }).sort((a,b)=> cowNumCmp(a.number, b.number));
 

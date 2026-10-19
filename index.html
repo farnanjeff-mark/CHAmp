@@ -425,10 +425,10 @@
         <button class="btn" id="homeFarmOperationsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">🚜</span>Farm Ops</button>
       </div>
       <div style="max-width:280px;margin:0 auto;padding-top:0;">
-        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:stretch;">
-          <button id="homeQuickSearchMicBtn" class="btn" aria-label="Say a cow number" style="background:linear-gradient(135deg,#2E88C4,#0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;font-size:20px;line-height:1.1;padding:4px 0;flex:0 0 66px;min-width:0;height:46px;">&#127908;<br><span style="font-size:11px;">Voice</span></button>
-          <div id="homeQuickSearchDisplay" style="background:#fff;border:2px solid #0C5A8E;border-radius:10px;padding:0 6px;font-size:24px;font-weight:700;text-align:center;height:46px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;letter-spacing:.05em;color:var(--ink);">&nbsp;</div>
-          <button id="homeQuickSearchGoBtn" class="btn" style="background:#3C9142;color:#fff;border-color:#fff;border-width:1.5px;font-size:18px;padding:0;flex:0 0 66px;min-width:0;height:46px;">Go</button>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:8px;">
+          <button id="homeQuickSearchMicBtn" class="btn" aria-label="Say a cow number" style="background:linear-gradient(135deg,#2E88C4,#0C5A8E);color:#fff;border-color:#fff;border-width:2px;font-size:20px;line-height:1;padding:2px 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">&#127908;<span style="font-size:13px;">Voice</span></button>
+          <div id="homeQuickSearchDisplay" style="background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:0 4px;font-size:24px;font-weight:700;text-align:center;box-sizing:border-box;display:flex;align-items:center;justify-content:center;min-width:0;letter-spacing:.02em;color:var(--ink);">&nbsp;</div>
+          <button id="homeQuickSearchGoBtn" class="btn" style="background:#3C9142;color:#fff;border-color:#fff;border-width:2px;font-size:20px;padding:12px 0;min-width:0;">Go</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px;">
           <button class="btn keypad-digit" data-digit="1" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:20px;padding:12px 0;">1</button>
@@ -16459,8 +16459,8 @@
     rec.lang = 'en-US';
     rec.interimResults = false;
     rec.maxAlternatives = 3;
-    const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908;<br><span style="font-size:11px;">Voice</span>'; btn.style.background = ''; };
-    btn.innerHTML = '&#127908;<br><span style="font-size:10px;">Listening</span>';
+    const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908;<span style="font-size:13px;">Voice</span>'; btn.style.background = ''; };
+    btn.innerHTML = '&#127908;<span style="font-size:12px;">Listening</span>';
     btn.style.background = '#7A2E27';
     let heard = false;
     rec.onresult = (ev)=>{

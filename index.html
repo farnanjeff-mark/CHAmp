@@ -425,7 +425,11 @@
         <button class="btn" id="homeFarmOperationsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">🚜</span>Farm Ops</button>
       </div>
       <div style="max-width:280px;margin:0 auto;padding-top:0;">
-        <div id="homeQuickSearchDisplay" style="background:#fff;border:2px solid #0C5A8E;border-radius:10px;padding:10px;font-size:26px;font-weight:700;text-align:center;min-height:40px;margin-bottom:8px;letter-spacing:.05em;color:var(--ink);">&nbsp;</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:stretch;">
+          <button id="homeQuickSearchMicBtn" class="btn" aria-label="Say a cow number" style="background:linear-gradient(135deg,#2E88C4,#0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;font-size:20px;line-height:1.1;padding:4px 0;flex:0 0 66px;min-width:0;height:46px;">&#127908;<br><span style="font-size:11px;">Voice</span></button>
+          <div id="homeQuickSearchDisplay" style="background:#fff;border:2px solid #0C5A8E;border-radius:10px;padding:0 6px;font-size:24px;font-weight:700;text-align:center;height:46px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;letter-spacing:.05em;color:var(--ink);">&nbsp;</div>
+          <button id="homeQuickSearchGoBtn" class="btn" style="background:#3C9142;color:#fff;border-color:#fff;border-width:1.5px;font-size:18px;padding:0;flex:0 0 66px;min-width:0;height:46px;">Go</button>
+        </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:8px;">
           <button class="btn keypad-digit" data-digit="1" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:20px;padding:12px 0;">1</button>
           <button class="btn keypad-digit" data-digit="2" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:20px;padding:12px 0;">2</button>
@@ -439,10 +443,6 @@
           <button class="btn" id="homeQuickSearchClearBtn" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:15px;padding:12px 0;">C</button>
           <button class="btn keypad-digit" data-digit="0" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:20px;padding:12px 0;">0</button>
           <button class="btn" id="homeQuickSearchBackBtn" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:18px;padding:12px 0;">⌫</button>
-        </div>
-        <div style="display:flex;gap:8px;justify-content:center;">
-          <button id="homeQuickSearchGoBtn" class="btn" style="background:#3C9142;color:#fff;border-color:#fff;border-width:1.5px;font-size:18px;padding:12px 0;flex:1 1 0;min-width:0;">Go</button>
-          <button id="homeQuickSearchMicBtn" class="btn" aria-label="Say a cow number" style="background:linear-gradient(135deg,#2E88C4,#0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;font-size:18px;padding:12px 0;flex:1 1 0;min-width:0;">&#127908; Voice</button>
         </div>
       </div>
       <div style="display:flex;gap:6px;padding-top:32px;">
@@ -3083,7 +3083,11 @@
       <div class="field"><label>Sale Barn (optional)</label><input type="text" id="ssBarn" placeholder="Sale barn name"/></div>
       <div class="field"><label>Buyer (optional)</label><input type="text" id="ssBuyer" placeholder="Who bought them"/></div>
       <div class="field"><label>Total Price for This Sale ($)</label><input type="number" id="ssPrice" inputmode="decimal" step="0.01" min="0" placeholder="Example: 18000"/></div>
-      <div class="field"><label>Photo of Sale Sheet</label><input type="file" id="ssPhoto" accept="image/*"/></div>
+      <div class="field"><label>Photo of Sale Sheet</label>
+        <input type="file" id="ssPhoto" accept="image/*" style="display:none;"/>
+        <button type="button" class="btn btn-nav-tool btn-full" id="ssPhotoBtn" style="padding:12px 14px;font-size:15px;">📷 Take Photo</button>
+        <img id="ssPhotoPreview" alt="Sale sheet preview" style="display:none;width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;"/>
+      </div>
       <div class="field"><label>Animals Sold by Their Own Number (heifers, cows, bulls)</label>
         <textarea id="ssAnimals" rows="2" placeholder="Example: 301, 302, 303"></textarea>
       </div>
@@ -3097,6 +3101,17 @@
       </div>
     `, { confirmBeforeClose:true, confirmMessage:'Discard this sale sheet?' });
     modal.querySelector('#ssCancel').addEventListener('click', closeModal);
+    const ssPhotoInput = modal.querySelector('#ssPhoto');
+    const ssPhotoBtn = modal.querySelector('#ssPhotoBtn');
+    const ssPhotoPreview = modal.querySelector('#ssPhotoPreview');
+    ssPhotoBtn.addEventListener('click', ()=> ssPhotoInput.click());
+    ssPhotoInput.addEventListener('change', ()=>{
+      const f = ssPhotoInput.files[0];
+      if(!f) return;
+      ssPhotoPreview.src = URL.createObjectURL(f);
+      ssPhotoPreview.style.display = 'block';
+      ssPhotoBtn.innerHTML = '📷 Retake';
+    });
     modal.querySelector('#ssSave').addEventListener('click', ()=> saveSaleSheet(modal));
   }
   async function saveSaleSheet(modal){
@@ -16444,8 +16459,8 @@
     rec.lang = 'en-US';
     rec.interimResults = false;
     rec.maxAlternatives = 3;
-    const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908; Voice'; btn.style.background = ''; };
-    btn.innerHTML = 'Listening…';
+    const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908;<br><span style="font-size:11px;">Voice</span>'; btn.style.background = ''; };
+    btn.innerHTML = '&#127908;<br><span style="font-size:10px;">Listening</span>';
     btn.style.background = '#7A2E27';
     let heard = false;
     rec.onresult = (ev)=>{

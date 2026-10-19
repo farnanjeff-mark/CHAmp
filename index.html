@@ -2965,12 +2965,72 @@
     if(sh) showSaleSheetPhoto(sh);
   });
   function showSaleSheetPhoto(sh){
-    const modal = openModal(`
-      <div class="modal-title">Sale Sheet · ${escapeHtml(fmtDate(sh.sale_date))}</div>
-      <img src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;border-radius:10px;border:2px solid var(--ink);margin-bottom:12px;"/>
-      <div class="modal-actions"><button class="btn btn-outline btn-full" id="saleSheetPhotoClose">Close</button></div>
-    `);
-    modal.querySelector('#saleSheetPhotoClose').addEventListener('click', closeModal);
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.94);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none;';
+    ov.innerHTML = `
+      <img id="ssZoomImg" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" draggable="false" style="max-width:100vw;max-height:100vh;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-select:none;will-change:transform;"/>
+      <div style="position:absolute;top:0;left:0;right:0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:linear-gradient(rgba(0,0,0,.6),rgba(0,0,0,0));">
+        <span style="color:#fff;font-family:Arial,sans-serif;font-size:14px;font-weight:700;">Sale Sheet · ${escapeHtml(fmtDate(sh.sale_date))}</span>
+        <button id="ssZoomClose" class="btn btn-nav-tool btn-sm" style="padding:10px 18px;">Close</button>
+      </div>
+      <div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;color:#fff;font-family:Arial,sans-serif;font-size:12px;opacity:.8;pointer-events:none;">Pinch to zoom · drag to move · double-tap to zoom</div>`;
+    document.body.appendChild(ov);
+    const img = ov.querySelector('#ssZoomImg');
+    let scale = 1, tx = 0, ty = 0;
+    const MAX = 6;
+    function clampPan(){
+      const w = img.clientWidth * scale, h = img.clientHeight * scale;
+      const maxX = Math.max(0, (w - window.innerWidth) / 2);
+      const maxY = Math.max(0, (h - window.innerHeight) / 2);
+      tx = Math.min(maxX, Math.max(-maxX, tx));
+      ty = Math.min(maxY, Math.max(-maxY, ty));
+    }
+    function apply(){
+      if(scale <= 1){ scale = 1; tx = 0; ty = 0; }
+      clampPan();
+      img.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    }
+    const dist = (a,b)=> Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+    let pinch = null, drag = null, lastTap = 0;
+    ov.addEventListener('touchstart', (e)=>{
+      if(e.target.closest('#ssZoomClose')) return;
+      e.preventDefault();
+      if(e.touches.length === 2){
+        pinch = { d0: dist(e.touches[0], e.touches[1]), s0: scale };
+        drag = null;
+      } else if(e.touches.length === 1){
+        const t = e.touches[0];
+        const now = Date.now();
+        if(now - lastTap < 300){
+          scale = scale > 1 ? 1 : 2.5; tx = 0; ty = 0; apply(); lastTap = 0; return;
+        }
+        lastTap = now;
+        drag = { x: t.clientX, y: t.clientY, tx, ty };
+      }
+    }, { passive:false });
+    ov.addEventListener('touchmove', (e)=>{
+      e.preventDefault();
+      if(pinch && e.touches.length === 2){
+        scale = Math.min(MAX, Math.max(1, pinch.s0 * dist(e.touches[0], e.touches[1]) / pinch.d0));
+        apply();
+      } else if(drag && e.touches.length === 1 && scale > 1){
+        const t = e.touches[0];
+        tx = drag.tx + (t.clientX - drag.x);
+        ty = drag.ty + (t.clientY - drag.y);
+        apply();
+      }
+    }, { passive:false });
+    ov.addEventListener('touchend', (e)=>{
+      if(e.touches.length < 2) pinch = null;
+      if(e.touches.length === 0) drag = null;
+      else if(e.touches.length === 1){ const t = e.touches[0]; drag = { x: t.clientX, y: t.clientY, tx, ty }; }
+    });
+    ov.addEventListener('wheel', (e)=>{
+      e.preventDefault();
+      scale = Math.min(MAX, Math.max(1, scale * (e.deltaY < 0 ? 1.15 : 0.87)));
+      apply();
+    }, { passive:false });
+    ov.querySelector('#ssZoomClose').addEventListener('click', ()=> ov.remove());
   }
   function showSaleSheets(){
     setHeaderTitle('Sale', 'Sheets');
@@ -2993,6 +3053,7 @@
         <div class="record-date">${escapeHtml(fmtDate(sh.sale_date))}</div>
         ${info ? `<div class="record-med">${info}</div>` : ''}
         ${sh.total_price != null ? `<div class="record-med" style="color:#3C9142;">Total: ${escapeHtml(Number(sh.total_price).toLocaleString('en-US',{style:'currency',currency:'USD',minimumFractionDigits:(Number(sh.total_price)%1===0?0:2)}))}</div>` : ''}
+        ${sh.notes ? `<div class="record-notes">${escapeHtml(sh.notes)}</div>` : ''}
         ${sh.animal_numbers ? `<div class="record-reason">Animals sold: ${escapeHtml(sh.animal_numbers)}</div>` : ''}
         ${sh.cow_numbers ? `<div class="record-reason">Mother cows (calves sold): ${escapeHtml(sh.cow_numbers)}</div>` : ''}
         ${sh.photo_url ? `<img class="sale-sheet-thumb" data-id="${escapeHtml(sh.id)}" src="${escapeHtml(sh.photo_url)}" alt="Sale sheet" style="width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:2px solid var(--ink);margin-top:10px;cursor:pointer;"/>` : ''}
@@ -3035,6 +3096,7 @@
       <div class="field"><label>Sale Date</label><input type="date" id="esDate" value="${escapeHtml(sh.sale_date || '')}"/></div>
       <div class="field"><label>Sale Barn</label><input type="text" id="esBarn" value="${escapeHtml(sh.sale_barn || '')}"/></div>
       <div class="field"><label>Buyer</label><input type="text" id="esBuyer" value="${escapeHtml(sh.buyer || '')}"/></div>
+      <div class="field"><label>What Was Sold (note)</label><textarea id="esNotes" rows="3">${escapeHtml(sh.notes || '')}</textarea></div>
       <div class="field"><label>Total Price ($)</label><input type="number" id="esPrice" inputmode="decimal" step="0.01" min="0" value="${sh.total_price != null ? escapeHtml(String(sh.total_price)) : ''}"/></div>
       <div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-bottom:12px;">Changing the date or buyer also updates the animals and calves on this sale. You need phone signal to save.</div>
       <div class="modal-actions">
@@ -3047,6 +3109,7 @@
       const date = modal.querySelector('#esDate').value;
       const barn = modal.querySelector('#esBarn').value.trim();
       const buyer = modal.querySelector('#esBuyer').value.trim();
+      const notes = modal.querySelector('#esNotes').value.trim();
       const pr = modal.querySelector('#esPrice').value.trim();
       const price = pr === '' ? null : Number(pr);
       if(!date){ showToast('Pick the sale date'); return; }
@@ -3056,7 +3119,7 @@
       try{
         const hdr = Object.assign({}, HEADERS, {'Prefer':'return=representation'});
         const upd = await api('/sale_sheets?id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr,
-          body: JSON.stringify({ sale_date: date, sale_barn: barn || null, buyer: buyer || null, total_price: price }) });
+          body: JSON.stringify({ sale_date: date, sale_barn: barn || null, buyer: buyer || null, total_price: price, notes: notes || null }) });
         const common = { sold_date: date, sold_to: buyer || null };
         const calvUpd = await api('/calvings?sale_sheet_id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr, body: JSON.stringify(common) });
         const cowUpd = await api('/cows?sale_sheet_id=eq.' + encodeURIComponent(id), { method:'PATCH', headers: hdr, body: JSON.stringify(common) });
@@ -3082,6 +3145,7 @@
       <div class="field"><label>Sale Date</label><input type="date" id="ssDate" value="${todayLocal()}"/></div>
       <div class="field"><label>Sale Barn (optional)</label><input type="text" id="ssBarn" placeholder="Sale barn name"/></div>
       <div class="field"><label>Buyer (optional)</label><input type="text" id="ssBuyer" placeholder="Who bought them"/></div>
+      <div class="field"><label>What Was Sold (note)</label><textarea id="ssNotes" rows="3" placeholder="Example: 4 bred heifers"></textarea></div>
       <div class="field"><label>Total Price for This Sale ($)</label><input type="number" id="ssPrice" inputmode="decimal" step="0.01" min="0" placeholder="Example: 18000"/></div>
       <div class="field"><label>Photo of Sale Sheet</label>
         <input type="file" id="ssPhoto" accept="image/*" style="display:none;"/>
@@ -3119,6 +3183,7 @@
     const barn = modal.querySelector('#ssBarn').value.trim();
     const buyer = modal.querySelector('#ssBuyer').value.trim();
     const file = modal.querySelector('#ssPhoto').files[0];
+    const notes = modal.querySelector('#ssNotes').value.trim();
     const priceRaw = modal.querySelector('#ssPrice').value.trim();
     const price = priceRaw === '' ? null : Number(priceRaw);
     if(price !== null && (isNaN(price) || price < 0)){ showToast('Enter the price as a number'); return; }
@@ -3207,7 +3272,8 @@
           storage_path: storagePath, photo_url: photoUrl,
           cow_numbers: found.map(c=>c.number).join(', ') || null,
           animal_numbers: animals.map(c=>c.number).join(', ') || null,
-          total_price: price
+          total_price: price,
+          notes: notes || null
         })
       });
       const sheet = inserted[0];

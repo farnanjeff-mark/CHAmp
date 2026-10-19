@@ -787,11 +787,6 @@
     <button class="btn btn-nav-tool btn-full" id="askClaudeBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">💬</span>&nbsp;&nbsp;Ask Claude</button>
     <button class="btn btn-nav-tool btn-full" id="savedReportsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">⭐</span>&nbsp;&nbsp;Saved Reports</button>
 
-    <div class="section-label">Vet</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button class="btn" id="vetCallReportBtn" style="min-height:48px;white-space:nowrap;justify-content:flex-start;background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📋</span>Vet Call Report</button>
-    </div>
-
     <div class="section-label">Herd Reports</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
       <button class="btn" id="calvingReportBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐮</span>Calving Report</button>
@@ -987,6 +982,15 @@
         <input type="date" id="advBredAsOf"/>
       </div>
       <div class="adv-note">Leave the date blank to count days bred up to today. Pick the day the vet is coming to count up to that day. Use the Days Bred column.</div>
+      <div class="field">
+        <label>Vet Call Date - From</label>
+        <input type="date" id="advVetCallFrom"/>
+      </div>
+      <div class="field">
+        <label>Vet Call Date - To</label>
+        <input type="date" id="advVetCallTo"/>
+      </div>
+      <div class="adv-note">Shows cows whose latest breeding had a vet call in this date range. For one day, put the same date in both. Use the Vet Call columns.</div>
 
       <div class="field">
         <label>Preg Check Result</label>
@@ -4654,7 +4658,6 @@
   document.getElementById('pregCheckReportHomeBtn').addEventListener('click', showHome);
   document.getElementById('pregCheckDate').addEventListener('change', ()=> runWithBusyBanner('Building report…', 'Still building the report — this is taking longer than usual.', renderPregCheckReport));
   document.getElementById('pregCheckPrintBtn').addEventListener('click', printPregCheckReport);
-  document.getElementById('vetCallReportBtn').addEventListener('click', showVetCallReport);
   document.getElementById('vetCallReportHomeBtn').addEventListener('click', showHome);
   document.getElementById('vetCallReportDate').addEventListener('change', ()=> runWithBusyBanner('Building report…', 'Still building the report — this is taking longer than usual.', renderVetCallReport));
   document.getElementById('vetCallReportPrintBtn').addEventListener('click', printVetCallReport);
@@ -11969,6 +11972,8 @@
       { id:'breeding', label:'Breeding (latest record)', cols:[
         { key:'b_date', label:'Breed Date', get:(r,x)=> x.br ? advFmtD(x.br.breed_date) : '' },
         { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? bredToText(x.br) : '' },
+        { key:'b_vetdate', label:'Vet Call Date', get:(r,x)=> x.br ? advFmtD(x.br.vet_call_date) : '' },
+        { key:'b_vetcall', label:'Vet Call (days along)', get:(r,x)=> !x.br ? '' : (x.br.pregnancy_status === 'Open' ? 'Open' : (x.br.vet_calls != null ? String(x.br.vet_calls) : '')) },
         { key:'b_days', label:'Days Bred', get:(r,x)=> { const d = advDaysBred(x.br); return d == null ? '' : String(d); } },
         { key:'b_nat', label:'Natural Sire', get:(r,x)=> x.br ? (x.br.natural_sire || '') : '' },
         { key:'b_method', label:'Method', get:(r,x)=> x.br ? (x.br.pregnancy_method || '') : '' },
@@ -12261,7 +12266,7 @@
     advSearchTagNeeded:'Tag needed', advSearchFlagged:'Flagged', advSearchCalvedPending:'Calved pending', advSearchOutOfCow:'Out of cow #', advSearchMotherNum:'Mother #',
     advSearchBredTo:'Bred to', advSearchMethod:'Method', advSearchNaturalSire:'Natural sire', advSearchOpenOnly:'Open cows', advSearchPregBtOnly:'Preg BT', advSearchSellOnly:'Sell', advSearchPregCheck:'Preg check', advSearchNotCalved:'Not calved yet', advSearchDueWithin:'Due within', advSearchUnchecked:'Not preg-checked',
     advSearchMedicine:'Medicine', advSearchReason:'Reason', advSearchMinTimes:'Times treated', advSearchSameReason:'Same reason',
-    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight', advSearchBredNotCalved:'Bred, not calved', advBredAsOf:'Days bred as of', advSearchCowGainMin:'Weight gain', advSearchCowGainMax:'Weight gain', advSearchTwoWeights:'2+ weights',
+    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight', advSearchBredNotCalved:'Bred, not calved', advBredAsOf:'Days bred as of', advVetCallFrom:'Vet call', advVetCallTo:'Vet call', advSearchCowGainMin:'Weight gain', advSearchCowGainMax:'Weight gain', advSearchTwoWeights:'2+ weights',
     advSearchCalfSire:'Sire', advSearchCalfSex:'Sex', advSearchBirthAssist:'Birth assist', advSearchCalfOutcome:'Outcome', advSearchGrafted:'Grafted', advSearchWeightMin:'Birth weight', advSearchWeightMax:'Birth weight',
     advSearchWeaned:'Weaned', advSearchWeanWtMin:'Weaning weight', advSearchWeanWtMax:'Weaning weight', advSearchGainMin:'Gain/day', advSearchGainMax:'Gain/day',
     advSearchWeanAgeMin:'Age at weaning', advSearchWeanAgeMax:'Age at weaning', advSearchWeanFrom:'Weaned dates', advSearchWeanTo:'Weaned dates',
@@ -12311,6 +12316,7 @@
     advSearchGainMin:['Gain','min'], advSearchGainMax:['Gain','max'],
     advSearchWeanAgeMin:['Age','min'], advSearchWeanAgeMax:['Age','max'],
     advSearchWeanFrom:['Weaned','min','date'], advSearchWeanTo:['Weaned','max','date'],
+    advVetCallFrom:['Vet call','min','date'], advVetCallTo:['Vet call','max','date'],
     advSearchDateFrom:['Dates','min','date'], advSearchDateTo:['Dates','max','date']
   };
   const ADV_TEXT_FORMAT = {
@@ -12487,12 +12493,14 @@
     const cowGainMin = numVal('advSearchCowGainMin'), cowGainMax = numVal('advSearchCowGainMax');
     const twoWeights = document.getElementById('advSearchTwoWeights').checked;
     const bredNotCalved = document.getElementById('advSearchBredNotCalved').checked;
+    const vetFrom = document.getElementById('advVetCallFrom').value;
+    const vetTo = document.getElementById('advVetCallTo').value;
     const missingWeight = document.getElementById('advSearchMissingWeight').checked;
 
     const weaningFieldsUsed = !!(weaned || wwMin != null || wwMax != null || gainMin != null || gainMax != null || ageMin != null || ageMax != null || weanFrom || weanTo);
     const weightFieldsUsed = cowWtMin != null || cowWtMax != null;
     const gainFieldsUsed = cowGainMin != null || cowGainMax != null || twoWeights;
-    const breedingFieldsUsed = bredTo || method || naturalSire || openOnly || pregCheck;
+    const breedingFieldsUsed = bredTo || method || naturalSire || openOnly || pregCheck || vetFrom || vetTo;
     const medFieldsUsed = medicine || reason || minTimes != null;
     const calvingFieldsUsed = calfSire || calfSex || birthAssist || calfOutcome || graftedSel || weightMin != null || weightMax != null || weaningFieldsUsed || (advMode === 'calf' && !!(dateFrom || dateTo));
 
@@ -12505,8 +12513,9 @@
         (!naturalSire || (b.natural_sire||'').toLowerCase().includes(naturalSire)) &&
         (!openOnly || (latest && b.id === latest.id && b.pregnancy_status === 'Open')) &&
         (!pregCheck || (pregCheck === 'open' ? b.pregnancy_status === 'Open' : pregCheck === 'bred' ? b.pregnancy_status === 'Bred' : !b.pregnancy_status)) &&
-        (!dateFrom || b.breed_date >= dateFrom) &&
-        (!dateTo || b.breed_date <= dateTo)
+        (!(vetFrom || vetTo) || (latest && b.id === latest.id && b.vet_call_date && (!vetFrom || b.vet_call_date >= vetFrom) && (!vetTo || b.vet_call_date <= vetTo))) &&
+        ((vetFrom || vetTo) ? true : (!dateFrom || b.breed_date >= dateFrom)) &&
+        ((vetFrom || vetTo) ? true : (!dateTo || b.breed_date <= dateTo))
       );
     }
     function matchingMedRecords(num){

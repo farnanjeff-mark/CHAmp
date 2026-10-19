@@ -789,7 +789,6 @@
 
     <div class="section-label">Vet</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button class="btn" id="pregCheckReportBtn" style="min-height:48px;white-space:nowrap;justify-content:flex-start;background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🩺</span>Pre-Preg Report</button>
       <button class="btn" id="vetCallReportBtn" style="min-height:48px;white-space:nowrap;justify-content:flex-start;background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📋</span>Vet Call Report</button>
     </div>
 
@@ -979,6 +978,15 @@
         <input type="checkbox" id="advSearchSellOnly" style="width:20px;height:20px;"/>
         <label style="margin:0;" for="advSearchSellOnly">Sell only</label>
       </div>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="advSearchBredNotCalved" style="width:20px;height:20px;"/>
+        <label style="margin:0;" for="advSearchBredNotCalved">Bred and not calved yet (waiting on a preg check or calving)</label>
+      </div>
+      <div class="field">
+        <label>Count Days Bred As Of (optional)</label>
+        <input type="date" id="advBredAsOf"/>
+      </div>
+      <div class="adv-note">Leave the date blank to count days bred up to today. Pick the day the vet is coming to count up to that day. Use the Days Bred column.</div>
 
       <div class="field">
         <label>Preg Check Result</label>
@@ -4643,7 +4651,6 @@
     requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
   }
   document.getElementById('fieldCountBtn').addEventListener('click', showFieldCount);
-  document.getElementById('pregCheckReportBtn').addEventListener('click', showPregCheckReport);
   document.getElementById('pregCheckReportHomeBtn').addEventListener('click', showHome);
   document.getElementById('pregCheckDate').addEventListener('change', ()=> runWithBusyBanner('Building report…', 'Still building the report — this is taking longer than usual.', renderPregCheckReport));
   document.getElementById('pregCheckPrintBtn').addEventListener('click', printPregCheckReport);
@@ -11962,6 +11969,7 @@
       { id:'breeding', label:'Breeding (latest record)', cols:[
         { key:'b_date', label:'Breed Date', get:(r,x)=> x.br ? advFmtD(x.br.breed_date) : '' },
         { key:'b_to', label:'Bred To', get:(r,x)=> x.br ? bredToText(x.br) : '' },
+        { key:'b_days', label:'Days Bred', get:(r,x)=> { const d = advDaysBred(x.br); return d == null ? '' : String(d); } },
         { key:'b_nat', label:'Natural Sire', get:(r,x)=> x.br ? (x.br.natural_sire || '') : '' },
         { key:'b_method', label:'Method', get:(r,x)=> x.br ? (x.br.pregnancy_method || '') : '' },
         { key:'b_check', label:'Preg Check', get:(r,x)=> !x.br ? '' : (x.br.pregnancy_status === 'Open' ? 'Open' : x.br.pregnancy_status === 'Bred' ? 'Bred (preg)' : 'Not checked') },
@@ -12179,6 +12187,19 @@
     const total = Number(last.weight) - Number(first.weight);
     return { first, last, days, total, adg: total / days };
   }
+  // bred, with a due date, and no calving on or after the breeding date (the Pre-Preg Report's rule)
+  function advBredNotCalved(num){
+    const list = breedingFor(num).filter(b=> b.expected_due_date);
+    if(!list.length) return false;
+    const latest = [...list].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
+    return !calvingsFor(num).some(c=> c.calving_date >= latest.breed_date);
+  }
+  function advDaysBred(br){
+    if(!br || !br.breed_date) return null;
+    const el = document.getElementById('advBredAsOf');
+    const asOf = (el && el.value) ? el.value : todayLocal();
+    return Math.round((new Date(asOf + 'T00:00:00') - new Date(br.breed_date + 'T00:00:00')) / 86400000);
+  }
   function advBuildCowFacts(c){
     const num = c.number;
     const cvs = calvingsFor(num);
@@ -12240,7 +12261,7 @@
     advSearchTagNeeded:'Tag needed', advSearchFlagged:'Flagged', advSearchCalvedPending:'Calved pending', advSearchOutOfCow:'Out of cow #', advSearchMotherNum:'Mother #',
     advSearchBredTo:'Bred to', advSearchMethod:'Method', advSearchNaturalSire:'Natural sire', advSearchOpenOnly:'Open cows', advSearchPregBtOnly:'Preg BT', advSearchSellOnly:'Sell', advSearchPregCheck:'Preg check', advSearchNotCalved:'Not calved yet', advSearchDueWithin:'Due within', advSearchUnchecked:'Not preg-checked',
     advSearchMedicine:'Medicine', advSearchReason:'Reason', advSearchMinTimes:'Times treated', advSearchSameReason:'Same reason',
-    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight', advSearchCowGainMin:'Weight gain', advSearchCowGainMax:'Weight gain', advSearchTwoWeights:'2+ weights',
+    advSearchCowWtMin:'Weight', advSearchCowWtMax:'Weight', advSearchMissingWeight:'Missing weight', advSearchBredNotCalved:'Bred, not calved', advBredAsOf:'Days bred as of', advSearchCowGainMin:'Weight gain', advSearchCowGainMax:'Weight gain', advSearchTwoWeights:'2+ weights',
     advSearchCalfSire:'Sire', advSearchCalfSex:'Sex', advSearchBirthAssist:'Birth assist', advSearchCalfOutcome:'Outcome', advSearchGrafted:'Grafted', advSearchWeightMin:'Birth weight', advSearchWeightMax:'Birth weight',
     advSearchWeaned:'Weaned', advSearchWeanWtMin:'Weaning weight', advSearchWeanWtMax:'Weaning weight', advSearchGainMin:'Gain/day', advSearchGainMax:'Gain/day',
     advSearchWeanAgeMin:'Age at weaning', advSearchWeanAgeMax:'Age at weaning', advSearchWeanFrom:'Weaned dates', advSearchWeanTo:'Weaned dates',
@@ -12465,6 +12486,7 @@
     const cowWtMin = numVal('advSearchCowWtMin'), cowWtMax = numVal('advSearchCowWtMax');
     const cowGainMin = numVal('advSearchCowGainMin'), cowGainMax = numVal('advSearchCowGainMax');
     const twoWeights = document.getElementById('advSearchTwoWeights').checked;
+    const bredNotCalved = document.getElementById('advSearchBredNotCalved').checked;
     const missingWeight = document.getElementById('advSearchMissingWeight').checked;
 
     const weaningFieldsUsed = !!(weaned || wwMin != null || wwMax != null || gainMin != null || gainMax != null || ageMin != null || ageMax != null || weanFrom || weanTo);
@@ -12600,6 +12622,7 @@
       if(outOfCow && !calvings.some(k=> k.cow_number === outOfCow && k.promoted_to_cow_number === c.number)) return false;
       if(missingWeight && !(isActiveStatus(c) && !weightsFor(c.number).some(w=> w.weight != null))) return false;
       if(weightFieldsUsed && matchingWeightRecords(c.number).length === 0) return false;
+      if(bredNotCalved && !advBredNotCalved(c.number)) return false;
       if(gainFieldsUsed){
         const gi = advGainInfo(weightsFor(c.number).filter(w=> w.weight != null));
         if(!gi) return false;
@@ -12613,7 +12636,7 @@
         else if(mr.length === 0 && matchingCalfMedRecords(c.number).length === 0) return false;
       }
       if(calvingFieldsUsed && matchingCalvingRecords(c.number).length === 0) return false;
-      if(!breedingFieldsUsed && !medFieldsUsed && !calvingFieldsUsed && !weightFieldsUsed && !gainFieldsUsed && (dateFrom || dateTo) && !cowHasActivityInDateRange(c.number, dateFrom, dateTo)) return false;
+      if(!breedingFieldsUsed && !medFieldsUsed && !calvingFieldsUsed && !weightFieldsUsed && !gainFieldsUsed && !bredNotCalved && (dateFrom || dateTo) && !cowHasActivityInDateRange(c.number, dateFrom, dateTo)) return false;
       return true;
     }).sort((a,b)=> cowNumCmp(a.number, b.number));
 

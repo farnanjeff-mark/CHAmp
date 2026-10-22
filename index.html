@@ -7772,6 +7772,14 @@
         }
         calfWeights = calfWeights.filter(w=>w.calving_id!==calvingRecord.id);
 
+        if(calvingRecord.weaning_weight != null && calvingRecord.weaning_weight !== ''){
+          const wInserted = await api('/weights', {
+            method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+            body: JSON.stringify({ cow_number: newNum, weigh_date: calvingRecord.weaning_date || todayLocal(), weight: Number(calvingRecord.weaning_weight), notes: 'Weaning weight' })
+          });
+          weights.push(wInserted[0]);
+        }
+
         const updatedCalving = await api('/calvings?id=eq.' + encodeURIComponent(calvingRecord.id), {
           method:'PATCH', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
           body: JSON.stringify(isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull' } : { promoted_to_cow_number: newNum })
@@ -7822,6 +7830,13 @@
             }
           });
           calfWeights = calfWeights.filter(w=>w.calving_id!==calvingRecord.id);
+
+          if(calvingRecord.weaning_weight != null && calvingRecord.weaning_weight !== ''){
+            const wBody = { cow_number: newNum, weigh_date: calvingRecord.weaning_date || todayLocal(), weight: Number(calvingRecord.weaning_weight), notes: 'Weaning weight' };
+            const wTempId = makeLocalId('pending-weight');
+            weights.push(Object.assign({ id: wTempId, _pendingSync:true }, wBody));
+            queuePendingWrite({ localId: makeLocalId('pw'), kind:'insert', table:'weights', tempId: wTempId, method:'POST', path:'/weights', body: wBody });
+          }
 
           const calvingBody = isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull' } : { promoted_to_cow_number: newNum };
           const cIdx = calvings.findIndex(c=>c.id===calvingRecord.id);

@@ -809,10 +809,6 @@
       <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0C447C;">Calves only</span>
     </label>
     <button class="btn btn-full" id="fieldCountHideBtn" aria-pressed="false" style="background:#3C9142;color:#fff;border-color:#3C9142;margin-bottom:10px;justify-content:center;">Hide checked: OFF</button>
-    <div id="fieldCountBornSinceWrap" class="hidden" style="margin-bottom:10px;">
-      <label style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#0C447C;">Born on or after</label>
-      <input type="date" id="fieldCountBornSince"/>
-    </div>
     <div style="display:flex;justify-content:space-between;align-items:center;background:#E6F1FB;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
       <span id="fieldCountTally" style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">0 of 0 checked</span>
       <button class="btn" id="fieldCountClearBtn" style="background:#A32D2D;color:#fff;border:none;font-size:12px;padding:8px 14px;">Clear all</button>
@@ -4591,13 +4587,11 @@
     const locVal = document.getElementById('fieldCountLocationFilter').value;
     const grpVal = document.getElementById('fieldCountGroupFilter').value;
     const calvesOnly = document.getElementById('fieldCountCalvesOnly').checked;
-    const bornSince = calvesOnly ? document.getElementById('fieldCountBornSince').value : '';
-    document.getElementById('fieldCountBornSinceWrap').classList.toggle('hidden', !calvesOnly);
     let matched = cows.filter(c=> isActiveStatus(c) && (!locVal || c.lot===locVal) && (!grpVal || c.cow_group===grpVal));
     if(calvesOnly){
       matched = matched
         .map(c=> ({ cow:c, calf: activeCalfFor(c.number) }))
-        .filter(x=> x.calf && (!bornSince || x.calf.calving_date >= bornSince))
+        .filter(x=> x.calf)
         .map(x=> x.cow);
     }
     matched.sort((a,b)=> cowNumCmp(a.number, b.number));
@@ -4635,7 +4629,6 @@
     if(printRows.length === 0){ showToast('Nothing to print'); return; }
     const locVal = document.getElementById('fieldCountLocationFilter').value;
     const grpVal = document.getElementById('fieldCountGroupFilter').value;
-    const bornSince = document.getElementById('fieldCountBornSince').value;
     const rowsHtml = printRows.map((cow,i)=>{
       const calf = lastFieldCountCalvesOnly ? activeCalfFor(cow.number) : null;
       const checked = fieldCountChecked.has(cow.number) ? '✓' : '';
@@ -4652,7 +4645,7 @@
     if(locVal) subtitleParts.push('Location: '+locVal);
     if(grpVal) subtitleParts.push('Group: '+grpVal);
     if(fieldCountHideSnapshot) subtitleParts.push('Unchecked only');
-    if(lastFieldCountCalvesOnly) subtitleParts.push(bornSince ? 'Calves born on or after '+fmtDate(bornSince) : 'Calves only');
+    if(lastFieldCountCalvesOnly) subtitleParts.push('Calves only');
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
         <h2 style="margin:0 0 4px;">Farnan Cattle Co. — Field Count</h2>
@@ -4677,7 +4670,6 @@
   document.getElementById('fieldCountLocationFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountGroupFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountCalvesOnly').addEventListener('change', ()=>{ renderFieldCountList(); });
-  document.getElementById('fieldCountBornSince').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountClearBtn').addEventListener('click', ()=>{ fieldCountChecked.clear(); saveFieldCountChecked(); setFieldCountHide(false); });
   document.getElementById('fieldCountHideBtn').addEventListener('click', ()=>{ setFieldCountHide(!fieldCountHideSnapshot); });
   document.getElementById('fieldCountPrintBtn').addEventListener('click', printFieldCount);

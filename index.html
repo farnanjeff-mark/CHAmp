@@ -804,14 +804,19 @@
       <select id="fieldCountLocationFilter" style="flex:1;"></select>
       <select id="fieldCountGroupFilter" style="flex:1;"></select>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;background:#F7F2E6;border-radius:8px;padding:8px 12px;cursor:pointer;">
-      <input type="checkbox" id="fieldCountCalvesOnly" style="width:18px;height:18px;accent-color:#0274BA;"/>
-      <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:#0C447C;">Calves only</span>
-    </label>
-    <button class="btn btn-full" id="fieldCountHideBtn" aria-pressed="false" style="background:#3C9142;color:#fff;border-color:#3C9142;margin-bottom:10px;justify-content:center;">Hide checked: OFF</button>
-    <div style="display:flex;justify-content:space-between;align-items:center;background:#E6F1FB;border-radius:8px;padding:10px 12px;margin-bottom:14px;">
-      <span id="fieldCountTally" style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">0 of 0 checked</span>
-      <button class="btn" id="fieldCountClearBtn" style="background:#A32D2D;color:#fff;border:none;font-size:12px;padding:8px 14px;">Clear all</button>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#0274BA;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;cursor:pointer;box-shadow:0 2px 5px rgba(43,38,32,.16);">
+        <input type="checkbox" id="fieldCountCalvesOnly" style="width:18px;height:18px;accent-color:#fff;"/>
+        <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;white-space:nowrap;">Calves only</span>
+      </label>
+      <button class="btn" id="fieldCountHideBtn" aria-pressed="false" style="flex:1;background:#0274BA;color:#fff;border-color:#0274BA;justify-content:center;padding:10px 12px;">Hide checked: OFF</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:14px;">
+      <button class="btn hidden" id="fieldCountAddCowBtn" style="background:#0274BA;color:#fff;border-color:#0274BA;justify-content:center;padding:10px 14px;">Add cow</button>
+      <div style="flex:1;display:flex;justify-content:space-between;align-items:center;gap:8px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:6px 10px;">
+        <span id="fieldCountTally" style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">0 of 0 checked</span>
+        <button class="btn" id="fieldCountClearBtn" style="background:#A32D2D;color:#fff;border:none;font-size:12px;padding:8px 12px;">Clear all</button>
+      </div>
     </div>
     <button class="btn btn-outline btn-full hidden" id="fieldCountPrintBtn" style="margin-bottom:14px;">🖨️ Print</button>
     <div id="fieldCountList" style="display:flex;flex-direction:column;gap:6px;"></div>
@@ -3295,7 +3300,7 @@
         }
         for(const cv of addedCalfPlan){
           try{
-            const u = await patch('/calvings?id=eq.' + encodeURIComponent(cv.id), { calf_outcome:'sold', sold_date:date, sold_to: buyer || null, sale_sheet_id:id });
+            const u = await patch('/calvings?id=eq.' + encodeURIComponent(cv.id), { calf_outcome:'sold', to_sell:false, sold_date:date, sold_to: buyer || null, sale_sheet_id:id });
             if(u && u[0]) setCalf(u[0]);
           }catch(e){ failed.push(cv.cow_number); }
         }
@@ -3468,7 +3473,7 @@
       const failed = [];
       for(const item of plan){
         try{
-          const body = { calf_outcome:'sold', sold_date:date, sold_to: buyer || null, sale_sheet_id: sheet.id };
+          const body = { calf_outcome:'sold', to_sell:false, sold_date:date, sold_to: buyer || null, sale_sheet_id: sheet.id };
           const upd = await api('/calvings?id=eq.' + encodeURIComponent(item.calving.id), {
             method:'PATCH',
             headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
@@ -4587,6 +4592,7 @@
     const locVal = document.getElementById('fieldCountLocationFilter').value;
     const grpVal = document.getElementById('fieldCountGroupFilter').value;
     const calvesOnly = document.getElementById('fieldCountCalvesOnly').checked;
+    document.getElementById('fieldCountAddCowBtn').classList.toggle('hidden', !locVal);
     let matched = cows.filter(c=> isActiveStatus(c) && (!locVal || c.lot===locVal) && (!grpVal || c.cow_group===grpVal));
     if(calvesOnly){
       matched = matched
@@ -4623,6 +4629,73 @@
       listEl.appendChild(row);
     });
     document.getElementById('fieldCountTally').textContent = `${matched.filter(c=>fieldCountChecked.has(c.number)).length} of ${matched.length} checked`;
+  }
+  function fieldCountAddCowModal(){
+    const locVal = document.getElementById('fieldCountLocationFilter').value;
+    if(!locVal) return;
+    const modal = openModal(`
+      <div class="modal-title">Add cow to ${escapeHtml(locVal)}</div>
+      <input type="text" id="fcAddSearch" placeholder="Type cow number" autocomplete="off" style="margin-bottom:10px;"/>
+      <div id="fcAddList" style="display:flex;flex-direction:column;gap:6px;max-height:50vh;overflow-y:auto;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="fcAddCancel">Cancel</button>
+      </div>
+    `);
+    const listEl = modal.querySelector('#fcAddList');
+    const searchEl = modal.querySelector('#fcAddSearch');
+    modal.querySelector('#fcAddCancel').addEventListener('click', closeModal);
+    function drawList(){
+      const q = searchEl.value.trim().toLowerCase();
+      const options = cows
+        .filter(c=> isActiveStatus(c) && c.lot !== locVal && (!q || String(c.number).toLowerCase().includes(q)))
+        .sort((a,b)=> cowNumCmp(a.number, b.number))
+        .slice(0, 50);
+      listEl.innerHTML = options.length ? '' : '<p class="empty">No matching cows.</p>';
+      options.forEach(cow=>{
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px 12px;cursor:pointer;';
+        row.innerHTML = `<span style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#333;">#${escapeHtml(cow.number)}</span>
+          <span style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;">${cow.lot ? 'Now in ' + escapeHtml(cow.lot) : 'No location'}</span>`;
+        row.addEventListener('click', ()=> moveCowToLocation(cow.number, locVal));
+        listEl.appendChild(row);
+      });
+    }
+    searchEl.addEventListener('input', drawList);
+    drawList();
+  }
+  async function moveCowToLocation(num, lot){
+    const body = { lot };
+    function finish(msg){
+      saveOfflineCache();
+      closeModal();
+      renderFieldCountList();
+      renderList();
+      showToast(msg);
+    }
+    try{
+      const updated = await api('/cows?number=eq.' + encodeURIComponent(num), {
+        method:'PATCH',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify(body)
+      });
+      const idx = cows.findIndex(c=>c.number===num);
+      if(idx !== -1) cows[idx] = updated[0];
+      finish('#' + num + ' added to ' + lot);
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        const idx = cows.findIndex(c=>c.number===num);
+        if(idx !== -1) cows[idx] = Object.assign({}, cows[idx], body, { _pendingLotSync: true });
+        queuePendingWrite({
+          localId: makeLocalId('pw'),
+          kind: 'update', table: 'cows', field: 'lot', cowNumber: num,
+          method: 'PATCH', path: '/cows?number=eq.' + encodeURIComponent(num),
+          body
+        });
+        finish('Saved on this phone — will sync when you have signal');
+      } else {
+        showToast('Could not save — try again');
+      }
+    }
   }
   function printFieldCount(){
     const printRows = fieldCountHideSnapshot ? lastFieldCountMatched.filter(c=>!fieldCountChecked.has(c.number)) : lastFieldCountMatched;
@@ -4673,6 +4746,7 @@
   document.getElementById('fieldCountClearBtn').addEventListener('click', ()=>{ fieldCountChecked.clear(); saveFieldCountChecked(); setFieldCountHide(false); });
   document.getElementById('fieldCountHideBtn').addEventListener('click', ()=>{ setFieldCountHide(!fieldCountHideSnapshot); });
   document.getElementById('fieldCountPrintBtn').addEventListener('click', printFieldCount);
+  document.getElementById('fieldCountAddCowBtn').addEventListener('click', fieldCountAddCowModal);
   function showFarmOperations(){
     setHeaderTitle('Farm', 'Operations');
     homeView.classList.add('hidden');
@@ -7444,7 +7518,11 @@
       <div class="section-label">Manage</div>
       ${calvingRecord.promoted_to_cow_number
         ? `<div style="padding:12px 14px;background:var(--paper-raised);border:2px solid var(--ink);border-radius:10px;font-weight:700;color:#3C9142;">✓ ${calvingRecord.calf_outcome === 'bull' ? 'Kept as bull' : 'Promoted to'} #${escapeHtml(calvingRecord.promoted_to_cow_number)}</div>`
-        : `<div class="field">
+        : `<label style="display:flex;align-items:center;gap:10px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;">
+             <input type="checkbox" id="calfToSellCheck" ${calvingRecord.to_sell ? 'checked' : ''} style="width:20px;height:20px;accent-color:#7A2E27;"/>
+             <span style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">Mark to sell</span>
+           </label>
+           <div class="field">
              <label>Outcome</label>
              <select id="calfOutcomeSelect">
                <option value="" ${!calvingRecord.calf_outcome ? 'selected' : ''}>Still Active</option>
@@ -7469,6 +7547,12 @@
     wireCalfWeaning(modal, calvingRecord);
     modal.querySelector('#calfAddMedBtn').addEventListener('click', ()=> calfMedEntryModal(calvingRecord, null, modal));
     modal.querySelector('#calfAddWeightBtn').addEventListener('click', ()=> calfWeightEntryModal(calvingRecord, null, modal));
+    const toSellCheck = modal.querySelector('#calfToSellCheck');
+    if(toSellCheck){
+      toSellCheck.addEventListener('change', async ()=>{
+        await setCalfToSell(calvingRecord, toSellCheck.checked);
+      });
+    }
     const outcomeSelect = modal.querySelector('#calfOutcomeSelect');
     if(outcomeSelect){
       outcomeSelect.addEventListener('change', async ()=>{
@@ -7492,8 +7576,44 @@
     modal.querySelector('#closeCalfRecordBtn').addEventListener('click', closeModal);
   }
 
+  async function setCalfToSell(calvingRecord, on){
+    const body = { to_sell: !!on };
+    try{
+      const updated = await api('/calvings?id=eq.' + encodeURIComponent(calvingRecord.id), {
+        method:'PATCH',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify(body)
+      });
+      const idx = calvings.findIndex(c=>c.id===calvingRecord.id);
+      if(idx !== -1){
+        calvings[idx] = updated[0];
+        Object.assign(calvingRecord, updated[0]);
+      }
+      saveOfflineCache();
+      showToast(on ? 'Marked to sell' : 'Sell mark removed');
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        const idx = calvings.findIndex(c=>c.id===calvingRecord.id);
+        if(idx !== -1){
+          calvings[idx] = Object.assign({}, calvings[idx], body, { _pendingSync:true });
+          Object.assign(calvingRecord, calvings[idx]);
+        }
+        queuePendingWrite({
+          localId: makeLocalId('pw'),
+          kind: 'update', table: 'calvings', recordId: calvingRecord.id,
+          method: 'PATCH', path: '/calvings?id=eq.' + encodeURIComponent(calvingRecord.id),
+          body
+        });
+        saveOfflineCache();
+        showToast('Saved on this phone — will sync when you have signal');
+      } else {
+        showToast('Could not save — try again');
+      }
+    }
+  }
+
   async function setCalfOutcome(calvingRecord, outcome){
-    const body = { calf_outcome: outcome };
+    const body = outcome ? { calf_outcome: outcome, to_sell: false } : { calf_outcome: outcome };
     try{
       const updated = await api('/calvings?id=eq.' + encodeURIComponent(calvingRecord.id), {
         method:'PATCH',
@@ -7787,7 +7907,7 @@
 
         const updatedCalving = await api('/calvings?id=eq.' + encodeURIComponent(calvingRecord.id), {
           method:'PATCH', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
-          body: JSON.stringify(isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull' } : { promoted_to_cow_number: newNum })
+          body: JSON.stringify(isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull', to_sell: false } : { promoted_to_cow_number: newNum, to_sell: false })
         });
         const cIdx = calvings.findIndex(c=>c.id===calvingRecord.id);
         if(cIdx !== -1) calvings[cIdx] = updatedCalving[0];
@@ -7843,7 +7963,7 @@
             queuePendingWrite({ localId: makeLocalId('pw'), kind:'insert', table:'weights', tempId: wTempId, method:'POST', path:'/weights', body: wBody });
           }
 
-          const calvingBody = isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull' } : { promoted_to_cow_number: newNum };
+          const calvingBody = isBull ? { promoted_to_cow_number: newNum, calf_outcome: 'bull', to_sell: false } : { promoted_to_cow_number: newNum, to_sell: false };
           const cIdx = calvings.findIndex(c=>c.id===calvingRecord.id);
           if(cIdx !== -1) calvings[cIdx] = Object.assign({}, calvings[cIdx], calvingBody, { _pendingSync:true });
           queuePendingWrite({ localId: makeLocalId('pw'), kind:'update', table:'calvings', recordId: calvingRecord.id, method:'PATCH', path:'/calvings?id=eq.'+encodeURIComponent(calvingRecord.id), body: calvingBody });

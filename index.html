@@ -23,8 +23,8 @@
     --paper-raised:#F7F2E6;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:#CBBFAE;color:var(--ink);font-family:'Georgia','Iowan Old Style',serif;-webkit-font-smoothing:antialiased;}
-  .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#CBBFAE;}
+  body{margin:0;background:#FFFFFF;color:var(--ink);font-family:'Georgia','Iowan Old Style',serif;-webkit-font-smoothing:antialiased;}
+  .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#FFFFFF;}
 
   .header{padding:22px 28px 20px;}
   .eyebrow{font-family:Arial,sans-serif;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--barn);margin:0 0 4px;}
@@ -125,6 +125,10 @@
   .btn-nav-tool{background:#2E88C4;color:#fff;border-color:#2E88C4;text-align:left;display:flex;align-items:center;gap:10px;}
   .btn-profile-nav{background:#0274BA;color:#fff;border-color:#0274BA;}
   .btn-profile-tool{background:#3C9142;color:#fff;border-color:#3C9142;}
+  /* BUTTON LOOK (added Oct 31): black outline on every button, pure white text on the colored ones.
+     TO SWITCH BACK: delete these two lines, and change the two page backgrounds (body and .app, near the top) from #FFFFFF back to #CBBFAE. */
+  .btn.btn{border-color:#000;}
+  .btn.btn-barn, .btn.btn-pasture, .btn.btn-pink, .btn.btn-blue, .btn.btn-grey, .btn.btn-orange, .btn.btn-purple{color:#fff;}
   .btn-full{width:100%;}
   .btn-sm{padding:7px 12px;font-size:13px;}
 

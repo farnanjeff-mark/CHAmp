@@ -5331,6 +5331,7 @@
         <div class="record-date">${fmtDate(r.calving_date)}</div>
         <div class="record-med">${calfSexLabel(r.calf_sex)} calf</div>
         ${r.grafted ? `<div style="display:inline-block;margin:4px 0;background:#E6F1FB;border:1px solid #2E88C4;color:#0C447C;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;">Grafted · born to #${escapeHtml(r.birth_mother||'?')}</div>` : ''}
+        ${r.twin ? `<div style="display:inline-block;margin:4px 4px 4px 0;background:#E6F1FB;border:1px solid #2E88C4;color:#0C447C;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;">Twins</div>` : ''}
         ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
         ${weaningLineHtml(r)}
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
@@ -7336,6 +7337,10 @@
           <label>Birth mother # (the cow that had this calf)</label>
           <input type="text" id="calvBirthMother" placeholder="e.g. 512" value="${isEdit ? escapeHtml(existingRecord.birth_mother||'') : ''}"/>
         </div>
+        <label style="display:flex;align-items:center;gap:10px;margin:10px 0 0;cursor:pointer;text-transform:none;letter-spacing:0;font-size:15px;font-weight:700;color:#0C447C;">
+          <input type="checkbox" id="calvTwin" style="width:22px;height:22px;" ${isEdit && existingRecord.twin ? 'checked' : ''}/>
+          <span>Twins</span>
+        </label>
       </div>
       <div class="field">
         <label>Notes</label>
@@ -7361,6 +7366,7 @@
       const assist = modal.querySelector('#calvAssist').value;
       const notes = modal.querySelector('#calvNotes').value.trim();
       const grafted = modal.querySelector('#calvGrafted').checked;
+      const twin = modal.querySelector('#calvTwin').checked;
       const birthMother = modal.querySelector('#calvBirthMother').value.trim();
       if(!dateVal){ showToast('Calving date is required'); return; }
       if(grafted && !birthMother){ showToast('Enter the birth mother # (or untick Grafted)'); return; }
@@ -7373,6 +7379,7 @@
         sire: sire||null,
         birth_assist: assist||null,
         grafted: grafted,
+        twin: twin,
         birth_mother: grafted ? birthMother : null
       };
       try{

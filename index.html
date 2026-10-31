@@ -2484,6 +2484,14 @@
     const day = String(d.getDate()).padStart(2,'0');
     return `${y}-${m}-${day}`; // in the browser's local timezone, not UTC
   }
+  // Text for the "Died" line on calving cards, e.g. "Died Oct 28, 2026 — Scours".
+  // Older calves with no date or reason saved still show just "Died".
+  function diedLabel(r){
+    let label = 'Died';
+    if(r.died_date) label += ' ' + fmtDate(r.died_date);
+    if(r.died_reason) label += ' — ' + escapeHtml(r.died_reason);
+    return label;
+  }
   function todayLocal(){
     return localDateFromTimestamp(new Date());
   }
@@ -5315,7 +5323,7 @@
       if(r.birth_weight != null) details.push(`${r.birth_weight} lbs`);
       if(r.sire) details.push(`Sire: ${escapeHtml(r.sire)}`);
       if(r.birth_assist && r.birth_assist !== 'None') details.push(escapeHtml(r.birth_assist));
-      const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? 'Died' : null;
+      const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? diedLabel(r) : null;
       div.innerHTML = `
         <button class="record-del" data-id="${r.id}">&times;</button>
         ${r._pendingSync ? '' : `<button class="record-edit" data-id="${r.id}">&#9998;</button>`}
@@ -6456,7 +6464,7 @@
           if(r.birth_weight != null) details.push(`${r.birth_weight} lbs`);
           if(r.sire) details.push(`Sire: ${escapeHtml(r.sire)}`);
           if(r.birth_assist && r.birth_assist !== 'None') details.push(escapeHtml(r.birth_assist));
-          const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? 'Died' : null;
+          const outcomeLabel = r.calf_outcome === 'sold' ? soldLabel(r) : r.calf_outcome === 'died' ? diedLabel(r) : null;
           return `<div class="record has-tools">
             ${profileRecordTools(r, 'calving')}
             <div class="record-date">${fmtDate(r.calving_date)}</div>

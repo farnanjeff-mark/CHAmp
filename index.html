@@ -7532,7 +7532,13 @@
                <option value="sold" ${calvingRecord.calf_outcome==='sold' ? 'selected' : ''}>Sold</option>
                <option value="died" ${calvingRecord.calf_outcome==='died' ? 'selected' : ''}>Died</option>
              </select>
-           </div>`}
+           </div>
+           ${calvingRecord.calf_outcome === 'died' ? `
+           <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">
+             <div><strong>Died:</strong> ${calvingRecord.died_date ? fmtDate(calvingRecord.died_date) : 'date not recorded'}</div>
+             <div style="margin-top:4px;"><strong>Reason:</strong> ${calvingRecord.died_reason ? escapeHtml(calvingRecord.died_reason) : 'not recorded'}</div>
+           </div>
+           <button class="btn btn-outline btn-full" id="calfEditDiedBtn">✏️ Edit Date / Reason</button>` : ''}`}
 
       <div class="modal-actions">
         <button class="btn btn-barn btn-full" id="closeCalfRecordBtn">Close</button>
@@ -7568,10 +7574,19 @@
           promoteCalfModal(calvingRecord, modal, 'bull');
           return;
         }
+        if(val === 'died'){
+          outcomeSelect.value = calvingRecord.calf_outcome || '';
+          calfDiedModal(calvingRecord);
+          return;
+        }
         await setCalfOutcome(calvingRecord, val || null);
         closeModal();
         calfRecordModal(calvingRecord);
       });
+    }
+    const editDiedBtn = modal.querySelector('#calfEditDiedBtn');
+    if(editDiedBtn){
+      editDiedBtn.addEventListener('click', ()=> calfDiedModal(calvingRecord));
     }
     refreshCalfRecordModal(modal, calvingRecord);
     modal.querySelector('#closeCalfRecordBtn').addEventListener('click', closeModal);
@@ -7613,8 +7628,43 @@
     }
   }
 
-  async function setCalfOutcome(calvingRecord, outcome){
-    const body = outcome ? { calf_outcome: outcome, to_sell: false } : { calf_outcome: outcome };
+  // Popup that asks for the date and reason when a calf is marked Died.
+  // Nothing is saved until the Save button is pressed; Cancel leaves the calf unchanged.
+  function calfDiedModal(calvingRecord){
+    const modal = openModal(`
+      <div class="modal-title">Calf Died</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:10px;">Calf born ${fmtDate(calvingRecord.calving_date)} to #${escapeHtml(calvingRecord.cow_number)}</div>
+      <div class="field">
+        <label>Date died</label>
+        <input type="date" id="calfDiedDate" value="${calvingRecord.died_date || todayLocal()}"/>
+      </div>
+      <div class="field">
+        <label>Reason</label>
+        <textarea id="calfDiedReason" rows="3" placeholder="e.g. scours, stillborn, hit by cold snap">${escapeHtml(calvingRecord.died_reason || '')}</textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelCalfDied">Cancel</button>
+        <button class="btn btn-barn" id="confirmCalfDied">Save</button>
+      </div>
+    `);
+    modal.querySelector('#cancelCalfDied').addEventListener('click', closeModal);
+    modal.querySelector('#confirmCalfDied').addEventListener('click', async ()=>{
+      const dateVal = modal.querySelector('#calfDiedDate').value;
+      if(!dateVal){ showToast('Date is required'); return; }
+      const reasonVal = modal.querySelector('#calfDiedReason').value.trim();
+      const btn = modal.querySelector('#confirmCalfDied');
+      btn.disabled = true;
+      await setCalfOutcome(calvingRecord, 'died', { died_date: dateVal, died_reason: reasonVal || null });
+      closeModal();   // closes this popup
+      closeModal();   // closes the old calf record screen
+      calfRecordModal(calvingRecord);   // reopens it showing the new info
+    });
+  }
+
+  async function setCalfOutcome(calvingRecord, outcome, extra){
+    // Date and reason are only kept while the outcome is "died"; any other outcome clears them.
+    const diedFields = outcome === 'died' ? (extra || {}) : { died_date: null, died_reason: null };
+    const body = Object.assign(outcome ? { calf_outcome: outcome, to_sell: false } : { calf_outcome: outcome }, diedFields);
     try{
       const updated = await api('/calvings?id=eq.' + encodeURIComponent(calvingRecord.id), {
         method:'PATCH',
@@ -15521,8 +15571,8 @@
         const cow = cows.find(cw=>cw.number===c.cow_number);
         return cow ? isActiveStatus(cow) : true;
       }).sort((a,b)=>b.calving_date.localeCompare(a.calving_date));
-      return { list, headerCells: ['Date','Cow #','Sex','Birth Wt','Sire','Notes'], rowsHtml: list.map((c,i)=>
-        `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">${fmtDateShort(c.calving_date)}</td><td style="padding:8px;">#${escapeHtml(c.cow_number)}</td><td style="padding:8px;">${calfSexLabel(c.calf_sex)}</td><td style="padding:8px;">${c.birth_weight!=null ? c.birth_weight : ''}</td><td style="padding:8px;">${escapeHtml(c.sire||'')}</td><td style="padding:8px;">${escapeHtml(c.notes||'')}</td></tr>`
+      return { list, headerCells: ['Born','Cow #','Sex','Birth Wt','Sire','Date Died','Reason','Notes'], rowsHtml: list.map((c,i)=>
+        `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;">${fmtDateShort(c.calving_date)}</td><td style="padding:8px;">#${escapeHtml(c.cow_number)}</td><td style="padding:8px;">${calfSexLabel(c.calf_sex)}</td><td style="padding:8px;">${c.birth_weight!=null ? c.birth_weight : ''}</td><td style="padding:8px;">${escapeHtml(c.sire||'')}</td><td style="padding:8px;">${c.died_date ? fmtDateShort(c.died_date) : ''}</td><td style="padding:8px;">${escapeHtml(c.died_reason||'')}</td><td style="padding:8px;">${escapeHtml(c.notes||'')}</td></tr>`
       ).join('') };
     }
     function refresh(){

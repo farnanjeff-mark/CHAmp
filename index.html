@@ -407,6 +407,19 @@
     thead tr[style*="#EFE8D8"] th{color:#FFFFFF !important;}
     [style*="#c9bfa4"]{border-color:#C5D9EC !important;}
     /* end blue and white */
+    /* Condensed search filters (added Nov 1): on Cow Search and Calf Search, the filter tiles sit four across
+       (icons kept), and the fields inside an opened tile spread three across instead of one tall column.
+       To undo, delete from here through the line "end condensed search". */
+    #advancedSearchView .adv-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px;}
+    #advancedSearchView .adv-tile{margin-bottom:0;min-height:64px;padding:8px 28px 8px 10px;grid-template-columns:34px 1fr;column-gap:8px;}
+    #advancedSearchView .adv-tile::before{font-size:24px;}
+    #advancedSearchView .adv-tile::after{right:8px;font-size:22px;}
+    #advancedSearchView .adv-tile .t{font-size:15px;}
+    #advancedSearchView .adv-panel.show{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:14px;align-items:start;}
+    #advancedSearchView .adv-panel.show > *{grid-column:1 / -1;}
+    #advancedSearchView .adv-panel.show > .field, #advancedSearchView .adv-panel.show > .row2 > .field{grid-column:auto;}
+    #advancedSearchView .adv-panel.show > .row2{display:contents;}
+    /* end condensed search */
     #homeView #homeSyncHoldWrap{display:none !important;} /* Sync On button: phone only */
     #homeView #homeAddCowBtn > span:first-child{background:#fff !important;color:#7A2E27 !important;font-size:22px !important;}
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.

@@ -358,8 +358,12 @@
     .app{max-width:none;margin:0 0 0 340px;}
     #homeView, #homeView.hidden{
       display:block !important;position:fixed;left:0;top:0;bottom:0;width:340px;z-index:10;
-      overflow-y:auto;background:#CBBFAE;border-right:3px solid var(--ink);padding:14px 8px 40px;
+      overflow-y:auto;background:#FFFFFF;border-right:3px solid var(--ink);padding:14px 8px 40px;
     }
+    /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
+       The white keypad keys keep their blue border. To undo just the colors, delete this one rule and
+       change the side menu background above from #FFFFFF back to #CBBFAE. */
+    #homeView [style*="linear-gradient"], #homeView [style*="background:#3C9142"], #homeView [style*="background:var(--barn)"]{border-color:#000 !important;}
     #desktopWelcome{display:none;font-family:Arial,sans-serif;font-size:18px;color:#6b6350;text-align:center;padding:60px 20px;}
     .app:not(:has(> .view:not(#homeView):not(.hidden))) #desktopWelcome{display:block;}
     .modal-backdrop{align-items:center;}

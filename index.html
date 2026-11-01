@@ -385,6 +385,14 @@
     #homeView div[style*="min-height:62px"] > span:first-child{width:50px;height:30px;flex:none;box-sizing:border-box;display:flex !important;align-items:center;justify-content:center;border:2px solid #2E88C4;border-radius:0;background:#fff;color:#0C5A8E !important;font-family:Arial,sans-serif !important;font-size:17px !important;font-weight:700 !important;line-height:1 !important;}
     #homeView div[style*="min-height:62px"] > span:last-child{color:var(--ink) !important;font-family:Arial,sans-serif !important;font-size:16px !important;font-weight:400 !important;text-transform:none !important;letter-spacing:.01em !important;white-space:nowrap !important;line-height:1.2 !important;text-align:left !important;}
     #homeView div[style*="min-height:62px"]:hover > span:last-child{text-decoration:underline;}
+    /* Blue and white instead of tan on desktop (added Nov 1): cards, pop-ups, forms, and report tables.
+       To undo just this, delete from here through the line "end blue and white". */
+    :root{--paper:#FFFFFF;--paper-raised:#EAF3FB;--line:#C5D9EC;}
+    [style*="#F7F2E6"], [style*="#EFE8D8"]{background:#EAF3FB !important;}
+    thead tr[style*="#EFE8D8"]{background:#0C5A8E !important;}
+    thead tr[style*="#EFE8D8"] th{color:#FFFFFF !important;}
+    [style*="#c9bfa4"]{border-color:#C5D9EC !important;}
+    /* end blue and white */
     #homeView #homeSyncHoldWrap{display:none !important;} /* Sync On button: phone only */
     #homeView #homeAddCowBtn > span:first-child{background:#fff !important;color:#7A2E27 !important;font-size:22px !important;}
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.

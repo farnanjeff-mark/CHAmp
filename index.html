@@ -353,13 +353,25 @@
      open, and report tables get a wider window.
      TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
      and delete the one <div id="desktopWelcome"> line near the top of the page body. */
-  #desktopWelcome{display:none;}
+  #desktopWelcome, .dsk-only{display:none;}
   @media screen and (min-width:1100px) and (hover:hover) and (pointer:fine){
-    .app{max-width:none;margin:0 0 0 340px;}
+    body{background:#FFFFFF;}
+    .app{max-width:none;margin:0 0 0 340px;background:#FFFFFF;}
     #homeView, #homeView.hidden{
       display:block !important;position:fixed;left:0;top:0;bottom:0;width:340px;z-index:10;
-      overflow-y:auto;background:#FFFFFF;border-right:3px solid var(--ink);padding:14px 8px 40px;
+      overflow-y:auto;background:#F4F7FA;border-right:3px solid var(--ink);padding:14px 8px 40px;
     }
+    /* side menu polish (added Nov 1): farm name box, small section labels, roomier spacing.
+       The farm name box and labels are the four elements marked class="dsk-only" in the home screen;
+       they are invisible on phones. To remove the polish, delete those four lines and the rules in this block that mention dsk-only. */
+    .dsk-only{display:block;}
+    .dsk-name{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:10px 8px;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 4px;}
+    .dsk-label{font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--barn);text-align:left;margin:16px 4px 8px;padding-bottom:4px;border-bottom:2px solid #E3E8EE;}
+    #homeView [style*="margin:-15px 0 25px"]{margin:0 0 4px !important;}
+    #homeView [style*="padding-top:32px"]{padding-top:0 !important;}
+    #homeView [style*="padding-top:6px"]{padding-top:8px !important;}
+    #homeView div[style*="display:flex;gap:6px"]{gap:8px !important;}
+    #homeView .dsk-label + div{padding-top:0 !important;}
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
        The white keypad keys keep their blue border. To undo just the colors, delete this one rule and
        change the side menu background above from #FFFFFF back to #CBBFAE. */
@@ -447,12 +459,15 @@
 
   <div class="view" id="homeView">
     <div style="text-align:center;padding:4px 10px;">
+      <div class="dsk-only dsk-name">Farnan Cattle Company</div>
+      <div class="dsk-only dsk-label" style="margin-top:12px;">MENU</div>
       <div style="display:flex;gap:6px;margin:-15px 0 25px;">
         <button class="btn" id="homeProfileBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">🐮</span>Profile</button>
         <button class="btn" id="homeUtilitiesBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">🛠️</span>Utilities</button>
         <button class="btn" id="homeReportsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">📊</span>Reports</button>
         <button class="btn" id="homeFarmOperationsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:1.5px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:11px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:22px;line-height:1;">🚜</span>Farm Ops</button>
       </div>
+      <div class="dsk-only dsk-label">FIND A COW</div>
       <div style="max-width:280px;margin:0 auto;padding-top:0;">
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:8px;">
           <button id="homeQuickSearchMicBtn" class="btn" aria-label="Say a cow number" style="background:linear-gradient(135deg,#2E88C4,#0C5A8E);color:#fff;border-color:#fff;border-width:2px;font-size:20px;line-height:1;padding:2px 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">&#127908;<span style="font-size:13px;">Voice</span></button>
@@ -474,6 +489,7 @@
           <button class="btn" id="homeQuickSearchBackBtn" style="background:#fff;color:#0C5A8E;border-color:#2E88C4;font-size:18px;padding:12px 0;">⌫</button>
         </div>
       </div>
+      <div class="dsk-only dsk-label">HERD STATUS</div>
       <div style="display:flex;gap:6px;padding-top:32px;">
         <div id="homeCalvedWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeCalvedBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
@@ -510,6 +526,7 @@
           <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Preg BT</span>
         </div>
       </div>
+      <div class="dsk-only dsk-label">TOOLS</div>
       <div style="display:flex;gap:6px;padding-top:6px;">
         <div id="homeTodoWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeTodoBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>

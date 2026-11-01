@@ -346,6 +346,29 @@
     z-index:60;opacity:0;transition:opacity .25s;pointer-events:none;max-width:85%;text-align:center;
   }
   .toast.show{opacity:1;}
+
+  /* ===== DESKTOP LAYOUT (added Nov 1) =====
+     Only applies on a wide screen with a mouse (a computer). Phones and iPads never match,
+     so the phone look is unchanged. The home keypad and tiles become a side menu that stays
+     open, and report tables get a wider window.
+     TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
+     and delete the one <div id="desktopWelcome"> line near the top of the page body. */
+  #desktopWelcome{display:none;}
+  @media screen and (min-width:1100px) and (hover:hover) and (pointer:fine){
+    .app{max-width:none;margin:0 0 0 340px;}
+    #homeView, #homeView.hidden{
+      display:block !important;position:fixed;left:0;top:0;bottom:0;width:340px;z-index:10;
+      overflow-y:auto;background:#CBBFAE;border-right:3px solid var(--ink);padding:14px 8px 40px;
+    }
+    #desktopWelcome{display:none;font-family:Arial,sans-serif;font-size:18px;color:#6b6350;text-align:center;padding:60px 20px;}
+    .app:not(:has(> .view:not(#homeView):not(.hidden))) #desktopWelcome{display:block;}
+    .modal-backdrop{align-items:center;}
+    .modal{border-radius:12px;border:3px solid var(--ink);max-height:90vh;}
+    .modal:has(table){max-width:min(1300px,92vw);}
+    .fab{left:auto;right:32px;transform:none;}
+    .fab:active{transform:scale(.95);}
+  }
+  /* ===== END DESKTOP LAYOUT ===== */
 @media print{
   .header, .fab, .toast, .banner, .modal-backdrop, .back, .btn, .chev, .photo-overlay-btn { display:none !important; }
   body{background:#fff;}
@@ -414,6 +437,7 @@
     </div>
   </div>
 
+  <div id="desktopWelcome">Pick a tile or enter a cow number on the left.</div>
   <div id="connBanner" class="banner hidden" style="margin:0 14px 10px;"></div>
   <div id="busyBanner" class="banner-busy hidden"><span class="spin"></span><span id="busyBannerText"></span></div>
 

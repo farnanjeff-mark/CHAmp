@@ -389,6 +389,14 @@
     /* Blue and white instead of tan on desktop (added Nov 1): cards, pop-ups, forms, and report tables.
        To undo just this, delete from here through the line "end blue and white". */
     :root{--paper:#FFFFFF;--paper-raised:#EAF3FB;--line:#C5D9EC;--muted:#44627F;--muted2:#5B7893;--muted3:#7E97AE;}
+    /* The browser rewrites colors like #F7F2E6 as rgb(...) once a row is made clickable, so match that form too. */
+    [style*="rgb(247, 242, 230)"], [style*="rgb(239, 232, 216)"]{background:#EAF3FB !important;}
+    thead tr[style*="rgb(239, 232, 216)"]{background:#0C5A8E !important;}
+    [style*="color: rgb(107, 99, 80)"]{color:#44627F !important;}
+    [style*="color: rgb(138, 129, 99)"]{color:#5B7893 !important;}
+    [style*="color: rgb(160, 143, 107)"]{color:#7E97AE !important;}
+    [style*="rgb(229, 222, 208)"]{background:#E3EEF8 !important;}
+    [style*="rgb(201, 191, 164)"]{border-color:#C5D9EC !important;}
     [style*="color:#6b6350" i]{color:#44627F !important;}
     [style*="color:#8a8163" i]{color:#5B7893 !important;}
     [style*="color:#a08f6b" i]{color:#7E97AE !important;}

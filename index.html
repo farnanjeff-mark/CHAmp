@@ -649,6 +649,9 @@
       <button class="btn" id="manageCustomAIBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🧪</span>Custom AI</button>
     </div>
 
+    <div class="section-label">Records</div>
+    <button class="btn btn-outline btn-full" id="recentlyDeletedBtn" style="text-align:left;display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;margin-bottom:12px;"><span style="font-size:18px;">🗑️</span>Recently Deleted</button>
+
     <div class="section-label">Help</div>
     <button class="btn btn-outline btn-full" id="textListEntryBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">✉️</span>&nbsp;&nbsp;Text a List</button>
     <button class="btn btn-outline btn-full" id="appInfoBtn" style="padding:11px 14px;font-size:14px;"><span style="font-size:18px;">📄</span>&nbsp;&nbsp;App Info / Handoff Guide</button>
@@ -894,13 +897,7 @@
     <button class="btn btn-nav-tool btn-full" id="savedReportsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">⭐</span>&nbsp;&nbsp;Saved Reports</button>
     </div>
 
-    <div class="section-label">Herd Reports</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button class="btn" id="calvingReportBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐮</span>Calving Report</button>
-    </div>
 
-    <div class="section-label">Records</div>
-    <button class="btn btn-outline btn-full" id="recentlyDeletedBtn" style="text-align:left;display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;"><span style="font-size:18px;">🗑️</span>Recently Deleted</button>
   </div>
 
   <div class="view hidden" id="fieldCountView">
@@ -9454,7 +9451,6 @@
   document.getElementById('globalSearchBox').addEventListener('input', renderGlobalSearchResults);
   document.getElementById('globalSearchPrintBtn').addEventListener('click', printGlobalSearchResults);
   document.getElementById('recentlyDeletedBtn').addEventListener('click', showRecentlyDeleted);
-  document.getElementById('calvingReportBtn').addEventListener('click', calvingReportModal);
   document.getElementById('recentlyDeletedHomeBtn').addEventListener('click', showHome);
   document.getElementById('importHomeBtn').addEventListener('click', showHome);
   document.getElementById('importTypeMeds').addEventListener('click', ()=> setImportType('meds'));

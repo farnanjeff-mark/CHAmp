@@ -422,6 +422,13 @@
     #advancedSearchView .adv-panel.show > .row2{display:contents;}
     #advancedSearchView .adv-panel input[type="checkbox"]{flex:none;}
     /* end condensed search */
+    /* Reports page, Search buttons (added Nov 2): the five buttons sit in one row of separate boxes, icon on top.
+       To undo, delete from here through the line "end reports search row". */
+    #reportsSearchRow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-bottom:12px;}
+    #reportsSearchRow .btn{margin-bottom:0 !important;width:auto !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:2px !important;text-align:center !important;padding:10px 12px 10px 4px !important;font-size:13px !important;letter-spacing:.01em !important;font-weight:700 !important;color:#0C5A8E !important;background:#fff !important;border:2px solid #2E88C4 !important;border-radius:8px !important;}
+    #reportsSearchRow .btn > span{font-size:26px !important;line-height:1 !important;}
+    #reportsSearchRow .btn:hover{background:#E6F1FB !important;}
+    /* end reports search row */
     #homeView #homeSyncHoldWrap{display:none !important;} /* Sync On button: phone only */
     #homeView #homeAddCowBtn > span:first-child{background:#fff !important;color:#7A2E27 !important;font-size:22px !important;}
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
@@ -879,11 +886,13 @@
     <div id="reportsStarredBox"></div>
 
     <div class="section-label">Search</div>
+    <div id="reportsSearchRow">
     <button class="btn btn-nav-tool btn-full" id="advancedSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🔍</span>&nbsp;&nbsp;Cow Search</button>
     <button class="btn btn-nav-tool btn-full" id="calfSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🐮</span>&nbsp;&nbsp;Calf Search</button>
     <button class="btn btn-nav-tool btn-full" id="homeGlobalSearchBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🔎</span>&nbsp;&nbsp;Search Everything</button>
     <button class="btn btn-nav-tool btn-full" id="askClaudeBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">💬</span>&nbsp;&nbsp;Ask Claude</button>
     <button class="btn btn-nav-tool btn-full" id="savedReportsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:12px;"><span style="font-size:20px;">⭐</span>&nbsp;&nbsp;Saved Reports</button>
+    </div>
 
     <div class="section-label">Herd Reports</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">

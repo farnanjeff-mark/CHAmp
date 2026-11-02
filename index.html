@@ -15287,6 +15287,11 @@
     }).join('');
     return '<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;"><thead>'+head+'</thead><tbody>'+body+'</tbody></table>';
   }
+  function claudeVisibleReport(rep, hidden){
+    if(!rep || !hidden || !hidden.length) return rep;
+    const keep = rep.columns.map((c,i)=> i).filter(i=> !hidden.includes(i));
+    return Object.assign({}, rep, { columns: keep.map(i=> rep.columns[i]), rows: rep.rows.map(r=> keep.map(i=> r[i])) });
+  }
   function claudeReportHtml(rep){
     return '<div style="font-size:16px;font-weight:700;color:#0C447C;margin-bottom:4px;">'+escapeHtml(rep.title)+'</div>'
       + '<div style="font-size:13px;margin-bottom:8px;">'+escapeHtml(rep.summary)+'</div>'
@@ -15391,6 +15396,10 @@
           <button class="btn btn-profile-tool hidden" id="acExportBtn" style="justify-content:center;">📊 Export to Excel</button>
         </div>
         <div class="modal-actions">
+          <button class="btn btn-nav-tool btn-full hidden" id="acColsBtn" style="justify-content:center;">☰ Columns</button>
+        </div>
+        <div id="acColsPanel" class="hidden" style="background:#E6F1FB;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-family:Arial,sans-serif;font-size:14px;color:var(--ink);"></div>
+        <div class="modal-actions">
           <button class="btn btn-nav-tool btn-full" id="acSaveQuestionBtn" style="justify-content:center;">⭐ Save Question</button>
         </div>
       </div>
@@ -15407,15 +15416,37 @@
     const ansEl = modal.querySelector('#acAnswer');
     const lookedEl = modal.querySelector('#acLooked');
     const exportBtn = modal.querySelector('#acExportBtn');
+    const colsBtn = modal.querySelector('#acColsBtn');
+    const colsPanel = modal.querySelector('#acColsPanel');
     const fmtSel = modal.querySelector('#acFormat');
     try{ const sf = localStorage.getItem('askClaudeFormat'); if(sf === 'table' || sf === 'paragraph') fmtSel.value = sf; }catch(e){}
     fmtSel.addEventListener('change', ()=>{ try{ localStorage.setItem('askClaudeFormat', fmtSel.value); }catch(e){} });
-    let current = { question:'', answer:'', looked:[], report:null };
+    let current = { question:'', answer:'', looked:[], report:null, hidden:[] };
 
     if(!getPass()) passWrap.classList.remove('hidden');
 
     const fmtAnswer = claudeFmtAnswer;
 
+    function drawAnswer(){
+      ansEl.innerHTML = current.report ? claudeReportHtml(claudeVisibleReport(current.report, current.hidden)) : fmtAnswer(current.answer);
+    }
+    function drawColsPanel(){
+      const cols = current.report ? current.report.columns : [];
+      colsPanel.innerHTML = '<div style="font-size:12px;font-weight:700;color:#0C447C;margin-bottom:6px;">Check the columns you want. Print and Export use only the checked ones.</div>'
+        + cols.map((c,i)=> '<label style="display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;"><input type="checkbox" data-ci="'+i+'" '+(current.hidden.includes(i)?'':'checked')+' style="width:20px;height:20px;accent-color:#2E88C4;"/> '+escapeHtml(c)+'</label>').join('');
+    }
+    colsBtn.addEventListener('click', ()=>{
+      if(colsPanel.classList.contains('hidden')){ drawColsPanel(); colsPanel.classList.remove('hidden'); }
+      else colsPanel.classList.add('hidden');
+    });
+    colsPanel.addEventListener('change', e=>{
+      const cb = e.target.closest('input[data-ci]'); if(!cb) return;
+      const i = parseInt(cb.getAttribute('data-ci'),10);
+      const total = current.report.columns.length;
+      if(!cb.checked && current.hidden.length >= total-1){ cb.checked = true; showToast('Keep at least one column'); return; }
+      current.hidden = cb.checked ? current.hidden.filter(x=> x!==i) : current.hidden.concat(i);
+      drawAnswer();
+    });
     async function ask(){
       const question = q.value.trim();
       if(!question){ status.textContent = 'Type your question first.'; return; }
@@ -15441,9 +15472,11 @@
         if(r.ok && data && data.ok){
           setPass(pass);
           passWrap.classList.add('hidden');
-          current = { question, answer: data.answer || '', looked: data.looked_at || [], report: data.report || null };
-          ansEl.innerHTML = current.report ? claudeReportHtml(current.report) : fmtAnswer(current.answer);
+          current = { question, answer: data.answer || '', looked: data.looked_at || [], report: data.report || null, hidden: [] };
+          colsPanel.classList.add('hidden');
+          drawAnswer();
           exportBtn.classList.toggle('hidden', !current.report);
+          colsBtn.classList.toggle('hidden', !current.report);
           lookedEl.innerHTML = current.looked.length
             ? current.looked.map(x=> '<li>' + escapeHtml(x) + '</li>').join('')
             : '<li>No lookups were needed.</li>';
@@ -15464,8 +15497,8 @@
     askBtn.addEventListener('click', ask);
     modal.querySelector('#acCloseBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
-    modal.querySelector('#acPrintBtn').addEventListener('click', ()=> claudePrintAnswer(current));
-    exportBtn.addEventListener('click', ()=> claudeExportReport(current.report));
+    modal.querySelector('#acPrintBtn').addEventListener('click', ()=> claudePrintAnswer(Object.assign({}, current, { report: claudeVisibleReport(current.report, current.hidden) })));
+    exportBtn.addEventListener('click', ()=> claudeExportReport(claudeVisibleReport(current.report, current.hidden)));
     const saveName = ()=> (current.question || '').replace(/\s+/g,' ').slice(0, 60);
     modal.querySelector('#acSaveQuestionBtn').addEventListener('click', ()=>{
       const question = (current.question || q.value || '').trim();

@@ -11966,7 +11966,7 @@
         <span>Payments</span>
         <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
       </div>
-      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Yearly payments, soonest due first. Mark Paid takes 1 off Payments Left and moves the due date ahead one year.</div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Yearly payments, soonest due first. Tap a payment for Mark Paid, Edit or Delete. Mark Paid takes 1 off Payments Left and moves the due date ahead one year.</div>
       <div class="modal-actions"><button class="btn btn-nav-tool btn-full" id="payAddBtn" style="justify-content:center;">+ Add Payment</button></div>
       <div id="payList" style="margin:12px 0;"></div>
       <div id="payEmpty" class="empty hidden">No payments added yet.</div>
@@ -11979,24 +11979,49 @@
       const rows = [...paymentsList].sort((a,b)=> (a.due_date||'').localeCompare(b.due_date||''));
       emptyEl.classList.toggle('hidden', rows.length !== 0);
       listEl.innerHTML = '';
-      rows.forEach(p=>{
-        const done = (p.payments_left != null && Number(p.payments_left) <= 0);
-        const div = document.createElement('div');
-        div.style.cssText = 'background:#fff;border:2px solid #2E88C4;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-family:Arial,sans-serif;';
-        div.innerHTML = `
-          <div style="font-size:12px;font-weight:700;color:#0C5A8E;">${done ? 'PAID OFF' : 'DUE ' + escapeHtml(fmtDate(p.due_date))}</div>
-          <div style="font-size:16px;font-weight:700;color:#0C447C;margin:2px 0;">${escapeHtml(p.name)}</div>
-          <div style="${lbl}">Lender: <b style="color:var(--ink);">${escapeHtml(p.lender||'')}</b></div>
-          <div style="${lbl}">Amount: <b style="color:var(--ink);">${escapeHtml(payMoney(p.amount))}</b> &nbsp;·&nbsp; Payments left: <b style="color:var(--ink);">${p.payments_left == null ? '' : escapeHtml(String(p.payments_left))}</b></div>
-          <div style="display:flex;gap:8px;margin-top:10px;">
+      if(!rows.length) return;
+      const grid = 'display:grid;grid-template-columns:54px 1fr 70px;gap:6px;align-items:center;';
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border:2px solid #2E88C4;border-radius:8px;padding:6px 10px;font-family:Arial,sans-serif;';
+      box.innerHTML = `<div style="${grid}font-size:11px;font-weight:700;color:#0C5A8E;border-bottom:2px solid #2E88C4;padding:4px 0;"><span>Due</span><span>Payment</span><span style="text-align:right;">Amount</span></div>`;
+      const today = todayLocal();
+      rows.forEach((p,i)=>{
+        const left = (p.payments_left == null) ? null : Number(p.payments_left);
+        const total = (p.total_payments == null) ? null : Number(p.total_payments);
+        const done = (left != null && left <= 0);
+        const soon = !done && p.due_date && ((new Date(p.due_date+'T12:00:00') - new Date(today+'T12:00:00'))/86400000) <= 30;
+        const dueShort = p.due_date ? new Date(p.due_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+        let bar = '', info = '';
+        if(total && left != null){
+          const pct = Math.max(0, Math.min(100, Math.round((total-left)/total*100)));
+          bar = `<div style="background:#dde6ee;border-radius:4px;height:7px;margin-top:6px;"><div style="background:#3C9142;width:${pct}%;height:7px;border-radius:4px;"></div></div>`;
+          info = `${left} left &middot; ${Math.max(0,total-left)} of ${total} paid`;
+        }else if(left != null){
+          info = `${left} left`;
+        }
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:8px 0;border-bottom:1px solid #dde6ee;cursor:pointer;' + (i%2 ? 'background:#F4F8FC;' : '');
+        row.innerHTML = `
+          <div style="${grid}font-size:13px;">
+            <b style="color:${soon ? '#7A2E27' : (done ? '#3C9142' : 'inherit')};">${done ? 'Paid' : escapeHtml(dueShort)}</b>
+            <span><b>${escapeHtml(p.name)}</b><br><span style="font-size:11px;color:#6b6350;">${escapeHtml(p.lender||'')}</span></span>
+            <b style="text-align:right;">${escapeHtml(payMoney(p.amount))}</b>
+          </div>${bar}
+          <div style="font-size:11px;color:#6b6350;margin-top:3px;">${done ? 'Paid off' : info}${p.due_date ? ' &middot; due ' + escapeHtml(fmtDate(p.due_date)) : ''}</div>
+          <div class="pay-actions" style="display:none;gap:8px;margin-top:8px;">
             ${done ? '' : '<button class="btn pay-paid" style="flex:1;justify-content:center;background:#3C9142;color:#fff;border-color:#3C9142;">✓ Mark Paid</button>'}
             <button class="btn btn-outline pay-edit" style="flex:1;justify-content:center;">✎ Edit</button>
             <button class="btn btn-barn pay-del" style="flex:1;justify-content:center;">Delete</button>
           </div>`;
-        const paid = div.querySelector('.pay-paid');
+        const acts = row.querySelector('.pay-actions');
+        row.addEventListener('click', ev=>{
+          if(ev.target.closest('button')) return;
+          acts.style.display = (acts.style.display === 'none') ? 'flex' : 'none';
+        });
+        const paid = row.querySelector('.pay-paid');
         if(paid) paid.addEventListener('click', ()=> markPaid(p));
-        div.querySelector('.pay-edit').addEventListener('click', ()=> paymentForm(p, draw));
-        div.querySelector('.pay-del').addEventListener('click', async ()=>{
+        row.querySelector('.pay-edit').addEventListener('click', ()=> paymentForm(p, draw));
+        row.querySelector('.pay-del').addEventListener('click', async ()=>{
           if(!confirm('Delete "' + p.name + '"?')) return;
           try{
             await api('/payments?id=eq.' + encodeURIComponent(p.id), { method:'DELETE' });
@@ -12004,8 +12029,10 @@
             saveOfflineCache(); draw();
           }catch(e){ showToast('Could not delete — try again'); }
         });
-        listEl.appendChild(div);
+        box.appendChild(row);
       });
+      const lastRow = box.lastElementChild; if(lastRow) lastRow.style.borderBottom = '0';
+      listEl.appendChild(box);
     }
     async function markPaid(p){
       const left = Math.max(0, (p.payments_left == null ? 1 : Number(p.payments_left)) - 1);
@@ -12036,6 +12063,7 @@
       <div class="field"><label>Date Payment Due</label><input type="date" id="payDue" value="${e.due_date||''}"/></div>
       <div class="field"><label>Amount</label><input type="number" id="payAmount" inputmode="decimal" step="0.01" min="0" value="${e.amount != null ? e.amount : ''}" placeholder="0.00"/></div>
       <div class="field"><label>Payments Left</label><input type="number" id="payLeft" inputmode="numeric" step="1" min="0" value="${e.payments_left != null ? e.payments_left : ''}"/></div>
+      <div class="field"><label>Total Payments (for the progress bar)</label><input type="number" id="payTotal" inputmode="numeric" step="1" min="1" value="${e.total_payments != null ? e.total_payments : ''}"/></div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="payCancel">Cancel</button>
         <button class="btn btn-blue" id="paySave">Save</button>
@@ -12052,7 +12080,8 @@
       const body = {
         name, lender: modal.querySelector('#payLender').value.trim(), due_date: due,
         amount: amt === '' ? null : Number(amt),
-        payments_left: left === '' ? null : parseInt(left, 10)
+        payments_left: left === '' ? null : parseInt(left, 10),
+        total_payments: modal.querySelector('#payTotal').value === '' ? null : parseInt(modal.querySelector('#payTotal').value, 10)
       };
       const btn = modal.querySelector('#paySave');
       btn.disabled = true;

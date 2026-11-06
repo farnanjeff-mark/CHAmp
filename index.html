@@ -416,13 +416,19 @@
     #advancedSearchView .adv-panel.show > .row2{display:contents;}
     #advancedSearchView .adv-panel input[type="checkbox"]{flex:none;}
     /* end condensed search */
-    /* Reports page, Search buttons (added Nov 2): the five buttons sit in one row of separate boxes, icon on top.
-       To undo, delete from here through the line "end reports search row". */
-    #reportsSearchRow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-bottom:12px;}
-    #reportsSearchRow .btn{margin-bottom:0 !important;width:auto !important;display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:2px !important;text-align:center !important;padding:10px 12px 10px 4px !important;font-size:13px !important;letter-spacing:.01em !important;font-weight:700 !important;color:#0C5A8E !important;background:#fff !important;border:2px solid #2E88C4 !important;border-radius:8px !important;}
-    #reportsSearchRow .btn > span{font-size:26px !important;line-height:1 !important;}
-    #reportsSearchRow .btn:hover{background:#E6F1FB !important;}
-    /* end reports search row */
+    /* Menus in the left pane (added Nov 6): Utilities, Reports and Farm Ops open at the bottom of the left side,
+       under a divider line, and their results open on the right. Computer only.
+       To undo, delete from here through the line "end menus in left pane" and the script block
+       marked "MENUS IN LEFT PANE" near the bottom of the page. */
+    #dskMenuPane{display:none;}
+    #homeView[data-menu] #dskMenuPane{display:block;border-top:3px solid #0C5A8E;margin-top:16px;padding-top:12px;}
+    #dskMenuPane > .view{display:none !important;padding:0 !important;}
+    #homeView[data-menu="utilitiesView"] #utilitiesView,
+    #homeView[data-menu="reportsView"] #reportsView,
+    #homeView[data-menu="farmOperationsView"] #farmOperationsView{display:block !important;}
+    #dskMenuPane > .view > .btn:first-child{padding:8px 12px !important;font-size:14px !important;margin-bottom:10px !important;}
+    #dskMenuPane > .view > .btn:first-child > span{font-size:18px !important;}
+    /* end menus in left pane */
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
        The white keypad keys keep their blue border. To undo just the colors, delete this one rule and
        change the side menu background above from #FFFFFF back to #CBBFAE. */
@@ -17289,6 +17295,38 @@
     try{ rec.start(); }catch(e){ reset(); showToast('Voice did not work — use the keypad'); }
   }
   document.getElementById('homeQuickSearchMicBtn').addEventListener('click', (e)=>{ e.currentTarget.blur(); homeVoiceSearch(); });
+
+
+  // ===== MENUS IN LEFT PANE (computer only) =====
+  // On a computer, the Utilities, Reports and Farm Ops pages are moved into the bottom of the left side menu
+  // and stay open while a report opens on the right. On a phone nothing moves.
+  (function(){
+    const mq = window.matchMedia('(min-width:1100px) and (hover:hover) and (pointer:fine)');
+    const ids = ['utilitiesView','reportsView','farmOperationsView'];
+    const home = document.getElementById('homeView');
+    const appEl = home.parentElement;
+    let pane = null;
+    function place(){
+      if(mq.matches){
+        if(!pane){ pane = document.createElement('div'); pane.id = 'dskMenuPane'; home.appendChild(pane); }
+        ids.forEach(id=>{ const v = document.getElementById(id); if(v && v.parentElement !== pane) pane.appendChild(v); });
+      } else {
+        ids.forEach(id=>{ const v = document.getElementById(id); if(v && v.parentElement !== appEl) appEl.appendChild(v); });
+        delete home.dataset.menu;
+      }
+    }
+    const obs = new MutationObserver(muts=>{
+      if(!mq.matches) return;
+      muts.forEach(m=>{
+        const t = m.target;
+        if(t === home){ if(!home.classList.contains('hidden')) delete home.dataset.menu; }
+        else if(!t.classList.contains('hidden')) home.dataset.menu = t.id;
+      });
+    });
+    ['homeView'].concat(ids).forEach(id=> obs.observe(document.getElementById(id), { attributes:true, attributeFilter:['class'] }));
+    place();
+    if(mq.addEventListener) mq.addEventListener('change', place);
+  })();
 
   // Desktop only: the cow number box in the side menu (no keypad on a computer).
   function runDesktopCowSearch(){

@@ -611,13 +611,6 @@
           <span style="font-size:22px;line-height:1;">🔧</span>
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0;line-height:1.1;text-align:center;white-space:nowrap;">Bulk Entry</span>
         </div>
-        <div id="homeHeatWatchWrap" role="button" aria-label="Heat Watch" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
-          <span id="homeHeatWatchBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
-          <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;">Heat Watch</span>
-        </div>
-        <div id="homeBlankBtn" aria-hidden="true" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:default;"></div>
-      </div>
-      <div style="display:flex;gap:6px;padding-top:6px;margin-bottom:12px;">
         <div id="homeSyncHoldWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#3C9142;border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeSyncHoldBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
           <span id="homeSyncHoldLabel" style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Sync On</span>
@@ -626,6 +619,7 @@
           <span style="font-size:26px;font-weight:700;line-height:1;">+</span>
           <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Add Cow</span>
         </div>
+      </div>
     </div>
   </div>
 
@@ -5636,70 +5630,7 @@
     });
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
-    updateHeatWatchBadge();
   }
-  // ===== Heat Watch (added Nov 6) =====
-  // Active cows whose most recent breeding was 18 to 24 days ago (AI or ET, or no method), not yet marked Bred or Open.
-  // This is the window when a cow that did not settle comes back into heat.
-  function heatWatchEntries(){
-    const out = [];
-    const today = new Date(todayLocal() + 'T00:00:00');
-    cows.forEach(cow=>{
-      if(!isActiveStatus(cow)) return;
-      const list = breedingFor(cow.number);
-      if(!list.length) return;
-      const latest = [...list].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
-      if(latest.pregnancy_status === 'Bred' || latest.pregnancy_status === 'Open') return;
-      if(latest.pregnancy_method === 'BB') return;
-      const days = Math.round((today - new Date(latest.breed_date + 'T00:00:00')) / 86400000);
-      if(days >= 18 && days <= 24) out.push({ cow, breeding: latest, days });
-    });
-    out.sort((a,b)=> b.days - a.days || cowNumCmp(a.cow.number, b.cow.number));
-    return out;
-  }
-  function updateHeatWatchBadge(){
-    const badge = document.getElementById('homeHeatWatchBadge');
-    if(!badge) return;
-    const n = heatWatchEntries().length;
-    badge.textContent = n > 99 ? '99+' : n;
-  }
-  function heatWatchModal(){
-    const entries = heatWatchEntries();
-    const modal = openModal(`
-      <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>Heat Watch</span>
-        <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
-      </div>
-      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Cows bred 18 to 24 days ago that are not yet marked Bred or Open. If one is in heat again, tick In Heat on her card. Natural-breeding (BB) cows are left out.</div>
-      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:10px;">${entries.length} cow${entries.length!==1?'s':''} to watch</div>
-      <div id="heatWatchTable" style="overflow-x:auto;margin-bottom:14px;"></div>
-      <div id="heatWatchList" style="margin-bottom:14px;"></div>
-      <div class="modal-actions"><button class="btn btn-outline btn-full" id="closeHeatWatchBtn">Close</button></div>
-    `);
-    const tableEl = modal.querySelector('#heatWatchTable');
-    const listEl = modal.querySelector('#heatWatchList');
-    if(!entries.length){
-      listEl.innerHTML = '<p class="empty">No cows in the 18 to 24 day window.</p>';
-    }else{
-      const rows = entries.map((e,i)=>{
-        const bredTo = (typeof bredToText === 'function' ? bredToText(e.breeding) : '') || '';
-        const peak = (e.days >= 20 && e.days <= 22);
-        return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;"><b>#${escapeHtml(e.cow.number)}</b></td><td style="padding:8px;${peak ? 'font-weight:700;color:#0C5A8E;' : ''}">Day ${e.days}</td><td style="padding:8px;">${escapeHtml(fmtDateShort(e.breeding.breed_date))}</td><td style="padding:8px;">${escapeHtml(e.breeding.pregnancy_method || '')}</td><td style="padding:8px;">${escapeHtml(bredTo)}</td><td style="padding:8px;text-align:center;">${e.cow.in_heat ? '✓' : ''}</td></tr>`;
-      }).join('');
-      tableEl.innerHTML = `
-        <table style="width:auto;min-width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
-          <thead><tr style="background:#EFE8D8;"><th style="text-align:left;padding:8px;">Cow #</th><th style="text-align:left;padding:8px;">Day</th><th style="text-align:left;padding:8px;">Bred</th><th style="text-align:left;padding:8px;">Method</th><th style="text-align:left;padding:8px;">Bred to</th><th style="text-align:center;padding:8px;">In Heat</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-      wireTableRowsToCards(tableEl, heatWatchModal, '← Back to Heat Watch');
-    }
-    modal.querySelector('#closeHeatWatchBtn').addEventListener('click', closeModal);
-    modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
-  }
-  document.getElementById('homeHeatWatchWrap').addEventListener('click', (e)=>{
-    e.stopPropagation();
-    heatWatchModal();
-  });
   function updatePregBtBadge(){
     const badge = document.getElementById('homePregBtBadge');
     const wrap = document.getElementById('homePregBtWrap');
@@ -6436,7 +6367,6 @@
           })
         ));
         results.forEach(r=> breedingRecords.push(r[0]));
-        for(const cow of targetCows){ await clearHeatAfterBreeding(cow.number); }
         closeModal();
         renderProfileList();
         window.scrollTo(0,0);
@@ -8952,7 +8882,6 @@
             body: JSON.stringify(Object.assign({ cow_number: currentBreedingCow }, body))
           });
           breedingRecords.push(inserted[0]);
-          await clearHeatAfterBreeding(currentBreedingCow);
         }
         saveOfflineCache();
         closeModal();
@@ -8973,7 +8902,6 @@
             body: Object.assign({ cow_number: currentBreedingCow }, body)
           });
           saveOfflineCache();
-          await clearHeatAfterBreeding(currentBreedingCow);
           closeModal();
           renderBreedingDetail();
           renderBreedingList();
@@ -9929,11 +9857,6 @@
         await toggleInHeat(cb.dataset.num, cb.checked);
       });
     });
-  }
-  // When a new breeding is logged, the cow is no longer "in heat": untick her box.
-  async function clearHeatAfterBreeding(num){
-    const c = cows.find(x=>x.number===num);
-    if(c && c.in_heat) await toggleInHeat(num, false);
   }
   async function toggleInHeat(num, checked){
     const body = { in_heat: checked };

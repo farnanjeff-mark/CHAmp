@@ -615,7 +615,10 @@
           <span id="homeHeatWatchBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
           <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;">Heat Watch</span>
         </div>
-        <div id="homeBlankBtn" aria-hidden="true" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:default;"></div>
+        <div id="homeInHeatWrap" role="button" aria-label="In Heat" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
+          <span id="homeInHeatBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
+          <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;">In Heat</span>
+        </div>
       </div>
       <div style="display:flex;gap:6px;padding-top:6px;margin-bottom:12px;">
         <div id="homeSyncHoldWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#3C9142;border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
@@ -2725,6 +2728,8 @@
       if(!c.preg_bt) return false;
     } else if(filterKind === 'sell'){
       if(!c.sell) return false;
+    } else if(filterKind === 'heat'){
+      if(!c.in_heat) return false;
     } else if(filterKind === 'herd'){
       if(c.herd_season !== filterValue) return false;
     } else if(filterKind === 'act'){
@@ -2752,6 +2757,7 @@
     const hasCalved = cows.some(c=>c.calved);
     const hasPregBt = cows.some(c=>c.preg_bt);
     const hasSell = cows.some(c=>c.sell);
+    const hasInHeat = cows.some(c=>c.in_heat);
     const hasSpring = cows.some(c=>c.herd_season==='Spring');
     const hasFall = cows.some(c=>c.herd_season==='Fall');
 
@@ -2777,6 +2783,7 @@
       (hasCalved ? '<option value="calved:1">Calved</option>' : '') +
       (hasPregBt ? '<option value="pregbt:1">Preg BT</option>' : '') +
       (hasSell ? '<option value="sell:1">Sell</option>' : '') +
+      (hasInHeat ? '<option value="heat:1">In Heat</option>' : '') +
       (hasSpring ? '<option value="herd:Spring">Spring Herd</option>' : '') +
       (hasFall ? '<option value="herd:Fall">Fall Herd</option>' : '');
     sel.innerHTML = '<option value="">All Locations / Groups / Owners</option>' +
@@ -5111,6 +5118,10 @@
     pendingProfileFilterOverride = 'pregbt:1';
     showProfileList();
   }
+  function showProfileListInHeat(){
+    pendingProfileFilterOverride = 'heat:1';
+    showProfileList();
+  }
   function showProfileListSell(){
     pendingProfileFilterOverride = 'sell:1';
     showProfileList();
@@ -5709,6 +5720,12 @@
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
   }
+  function updateInHeatBadge(){
+    const badge = document.getElementById('homeInHeatBadge');
+    if(!badge) return;
+    const count = cows.filter(c=>c.in_heat).length;
+    badge.textContent = count > 99 ? '99+' : count;
+  }
   function updateSellBadge(){
     const badge = document.getElementById('homeSellBadge');
     const wrap = document.getElementById('homeSellWrap');
@@ -5716,6 +5733,7 @@
     const count = cows.filter(c=>c.sell).length;
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
+    updateInHeatBadge();
   }
   function updateSyncHoldBadge(){
     const badge = document.getElementById('homeSyncHoldBadge');
@@ -9554,6 +9572,10 @@
     e.stopPropagation();
     showProfileListPregBt();
   });
+  document.getElementById('homeInHeatWrap').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    showProfileListInHeat();
+  });
   document.getElementById('homeSellWrap').addEventListener('click', (e)=>{
     e.stopPropagation();
     showProfileListSell();
@@ -9948,6 +9970,7 @@
       if(idx !== -1) cows[idx] = updated[0];
       saveOfflineCache();
       updateSyncHoldBadge();
+      updateInHeatBadge();
     }catch(e){
       if(e && e.isNetworkFailure){
         const idx = cows.findIndex(c=>c.number===num);
@@ -9962,6 +9985,7 @@
         document.querySelectorAll('[data-pending-heat-num="'+CSS.escape(num)+'"]').forEach(el=> el.style.display='block');
         showToast('Saved on this phone — will sync when you have signal');
         updateSyncHoldBadge();
+        updateInHeatBadge();
       } else {
         // put the box back the way it was
         document.querySelectorAll('.heat-check[data-num="'+CSS.escape(num)+'"]').forEach(el=> el.checked = !checked);

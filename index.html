@@ -367,25 +367,19 @@
        they are invisible on phones. To remove the polish, delete those four lines and the rules in this block that mention dsk-only. */
     .dsk-only{display:block;}
     .dsk-name{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:10px 8px;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 18px;}
-    .dsk-label{font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--barn);text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
-    #homeView [style*="margin:-15px 0 25px"]{margin:0 0 6px !important;}
+    .dsk-label{display:none !important;font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--barn);text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
+    #homeView [style*="margin:-15px 0 25px"]{margin:0 0 22px !important;}
     #homeView [style*="padding-top:32px"]{padding-top:0 !important;}
-    #homeView [style*="padding-top:6px"]{padding-top:0 !important;}
+    #homeView [style*="padding-top:6px"]{padding-top:8px !important;}
     #homeView div[style*="display:flex;gap:6px"]{gap:8px !important;}
-    #homeView .dsk-label + div{padding-top:0 !important;}
     /* Clean list look (added Nov 1): no keypad (you type the cow number), and the tiles become a column:
        a small box with the number (or icon) and a larger label to the right, outside the box. */
     .home-keypad{display:none !important;}
     .dsk-name{font-size:20px;box-shadow:0 3px 8px rgba(0,0,0,.18);}
-    .dsk-find{display:flex;gap:8px;margin:0 0 4px;}
+    .dsk-find{display:flex;gap:8px;margin:0 0 22px;}
     #dskCowInput{flex:1;min-width:0;height:44px;border:1px solid #2E88C4;border-radius:8px;padding:0 12px;font-family:Arial,sans-serif;font-size:20px;font-weight:700;color:var(--ink);background:#fff;}
     #dskCowInput:focus{outline:none;border-color:#0C5A8E;box-shadow:0 0 0 3px rgba(46,136,196,.25);}
-    #dskCowGo{width:56px;height:44px;background:#3C9142;color:#fff;border:1px solid #2E88C4;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:15px;cursor:pointer;}
-    #homeView div[style*="display:flex;gap:6px"]:not([style*="margin:-15px"]){flex-direction:column !important;gap:0 !important;align-items:stretch !important;}
-    #homeView div[style*="min-height:62px"]{flex:none !important;flex-direction:row !important;justify-content:flex-start !important;align-items:center !important;gap:14px !important;min-height:0 !important;padding:3px 0 !important;background:transparent !important;border:0 !important;border-radius:0 !important;color:var(--ink) !important;}
-    #homeView div[style*="min-height:62px"] > span:first-child{width:38px;height:38px;flex:none;box-sizing:border-box;display:flex !important;align-items:center;justify-content:center;border:1px solid #2E88C4;border-radius:8px;background:#fff;color:#0C5A8E !important;font-family:Arial,sans-serif !important;font-size:19px !important;font-weight:700 !important;line-height:1 !important;}
-    #homeView div[style*="min-height:62px"] > span:last-child{color:#0C5A8E !important;font-family:Arial,sans-serif !important;font-size:16px !important;font-weight:400 !important;text-transform:none !important;letter-spacing:.01em !important;white-space:nowrap !important;line-height:1.2 !important;text-align:left !important;}
-    #homeView div[style*="min-height:62px"]:hover > span:last-child{text-decoration:underline;}
+    #dskCowGo{display:none !important;width:56px;height:44px;background:#3C9142;color:#fff;border:1px solid #2E88C4;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:15px;cursor:pointer;}
     /* Blue and white instead of tan on desktop (added Nov 1): cards, pop-ups, forms, and report tables.
        To undo just this, delete from here through the line "end blue and white". */
     :root{--paper:#FFFFFF;--paper-raised:#EAF3FB;--line:#C5D9EC;--muted:#44627F;--muted2:#5B7893;--muted3:#7E97AE;}
@@ -429,8 +423,6 @@
     #reportsSearchRow .btn > span{font-size:26px !important;line-height:1 !important;}
     #reportsSearchRow .btn:hover{background:#E6F1FB !important;}
     /* end reports search row */
-    #homeView #homeSyncHoldWrap{display:none !important;} /* Sync On button: phone only */
-    #homeView #homeAddCowBtn > span:first-child{background:#fff !important;color:#7A2E27 !important;font-size:22px !important;}
     /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
        The white keypad keys keep their blue border. To undo just the colors, delete this one rule and
        change the side menu background above from #FFFFFF back to #CBBFAE. */

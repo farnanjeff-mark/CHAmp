@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="CHAmp">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#7A2E27">
+<meta name="theme-color" content="#5C3A21">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -16,7 +16,7 @@
   :root{
     --paper:#EFE8D8;
     --ink:#2B2620;
-    --barn:#7A2E27;
+    --barn:#5C3A21;
     --pasture:#455B3D;
     --tag:#E3A93C;
     --line:#c9bfa4;
@@ -822,7 +822,7 @@
     </div>
     <div style="display:flex;gap:8px;margin-bottom:20px;">
       <button class="btn btn-barn" id="vetPregSaveBtn" style="flex:1;">Save &amp; Next</button>
-      <button class="btn btn-outline" id="vetPregOpenBtn" style="flex:1;border-color:#7A2E27;color:#7A2E27;">Mark Open</button>
+      <button class="btn btn-outline" id="vetPregOpenBtn" style="flex:1;border-color:#5C3A21;color:#5C3A21;">Mark Open</button>
     </div>
     <div class="section-label" style="margin-top:0;">This Session</div>
     <div id="vetPregTallyList"></div>
@@ -6488,7 +6488,7 @@
       `<div class="profile-info-row" data-edit="${key}" role="button" style="display:flex;align-items:center;padding:11px 0;cursor:pointer;${i < rows.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,.28);' : ''}"><div style="font-family:Arial,sans-serif;width:118px;flex-shrink:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:700;">${lbl}</div><div style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#fff;min-width:0;flex:1;overflow-wrap:anywhere;">${val ? escapeHtml(val) : 'Not set'}</div><div class="profile-chev" style="font-family:Arial,sans-serif;font-size:24px;line-height:1;color:rgba(255,255,255,.85);padding-left:10px;">&rsaquo;</div></div>`
     ).join('');
     const status = cow.status || 'Active';
-    const colors = ({ Active:['#3C9142','#fff'], Sold:['#E3A93C','#2B2620'], Deceased:['#7A2E27','#fff'] })[status] || ['#6b6350','#fff'];
+    const colors = ({ Active:['#3C9142','#fff'], Sold:['#E3A93C','#2B2620'], Deceased:['#5C3A21','#fff'] })[status] || ['#6b6350','#fff'];
     badge.textContent = status;
     badge.style.background = colors[0];
     badge.style.color = colors[1];
@@ -6662,10 +6662,10 @@
           if(r.bred_to) details.push(`Bred to: ${escapeHtml(r.bred_to)}`);
           if(r.pregnancy_method) details.push(escapeHtml(r.pregnancy_method));
           if(r.natural_sire) details.push(`Natural sire: ${escapeHtml(r.natural_sire)}`);
-          return `<div class="record has-tools"${r.pregnancy_status==='Open' ? ' style="border-left-color:#7A2E27;"' : ''}>
+          return `<div class="record has-tools"${r.pregnancy_status==='Open' ? ' style="border-left-color:#5C3A21;"' : ''}>
             ${profileRecordTools(r, 'breeding')}
             <div class="record-date">${fmtDate(r.breed_date)}</div>
-            ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#7A2E27;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
+            ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
             ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>` : ''}
             ${r.vet_call_date && r.pregnancy_status!=='Open' ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#E6F1FB;border:1px solid #85B7EB;color:#0C447C;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:4px 0;">🩺 Vet call: ${fmtDate(r.vet_call_date)}${r.vet_calls ? ' — '+escapeHtml(r.vet_calls)+' days' : ''}</div>` : ''}
             ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
@@ -7640,7 +7640,7 @@
       ${calvingRecord.promoted_to_cow_number
         ? `<div style="padding:12px 14px;background:var(--paper-raised);border:2px solid var(--ink);border-radius:10px;font-weight:700;color:#3C9142;">✓ ${calvingRecord.calf_outcome === 'bull' ? 'Kept as bull' : 'Promoted to'} #${escapeHtml(calvingRecord.promoted_to_cow_number)}</div>`
         : `<label style="display:flex;align-items:center;gap:10px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;">
-             <input type="checkbox" id="calfToSellCheck" ${calvingRecord.to_sell ? 'checked' : ''} style="width:20px;height:20px;accent-color:#7A2E27;"/>
+             <input type="checkbox" id="calfToSellCheck" ${calvingRecord.to_sell ? 'checked' : ''} style="width:20px;height:20px;accent-color:#5C3A21;"/>
              <span style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">Mark to sell</span>
            </label>
            <div class="field">
@@ -8925,9 +8925,9 @@
       const pendingTag = e.pending ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;border:1px solid #E24B4A;color:#791F1F;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;margin-top:4px;">Not synced yet</div>` : '';
       if(e.isOpen){
         return `
-          <div class="record" style="padding:10px 14px;border-left-color:#7A2E27;">
+          <div class="record" style="padding:10px 14px;border-left-color:#5C3A21;">
             <button class="record-edit vet-preg-edit" data-idx="${idx}">&#9998;</button>
-            <div class="record-med" style="font-size:16px;">#${escapeHtml(e.cowNum)} — <span style="color:#7A2E27;">Open</span></div>
+            <div class="record-med" style="font-size:16px;">#${escapeHtml(e.cowNum)} — <span style="color:#5C3A21;">Open</span></div>
             ${pendingTag}
           </div>
         `;
@@ -10733,7 +10733,7 @@
         <button class="record-del" data-id="${h.id}">&times;</button>
         <button class="record-edit" data-id="${h.id}">&#9998;</button>
         <div class="record-date">${fmtDate(h.entry_date)}</div>
-        <div class="record-med">${escapeHtml(h.location)}${h.customer ? ' · <span style="color:#7A2E27;">'+escapeHtml(h.customer)+'</span>' : ''}${h.billed_at ? ' · <span style="color:#455B3D;font-weight:700;">Billed</span>' : ''}</div>
+        <div class="record-med">${escapeHtml(h.location)}${h.customer ? ' · <span style="color:#5C3A21;">'+escapeHtml(h.customer)+'</span>' : ''}${h.billed_at ? ' · <span style="color:#455B3D;font-weight:700;">Billed</span>' : ''}</div>
         <div class="record-reason">${[tasks.join(', '), h.total_bales!=null ? h.total_bales + ' bales' : null, h.acres!=null ? h.acres + ' acres' : null].filter(Boolean).join(' · ')}</div>
         ${h.notes ? `<div class="record-notes">${escapeHtml(h.notes)}</div>` : ''}
       `;
@@ -10894,7 +10894,7 @@
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:32px;font-family:Georgia,'Iowan Old Style',serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
-          <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#7A2E27;margin:0 0 6px;">${escapeHtml(bill.farm_name||'')}</div>
+          <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#5C3A21;margin:0 0 6px;">${escapeHtml(bill.farm_name||'')}</div>
           ${hasSplitAddress ? `
             ${bill.address_street ? `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:400;color:#2B2620;">${escapeHtml(bill.address_street)}</div>` : ''}
             ${bill.address_city_state ? `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:400;color:#2B2620;">${escapeHtml(bill.address_city_state)}</div>` : ''}
@@ -11029,7 +11029,7 @@
             <div style="flex:1;font-family:Arial,sans-serif;font-size:14px;">
               <div>${fmtDate(h.entry_date)} · ${escapeHtml(h.location)}</div>
               <div style="color:#6b6350;font-size:12px;">${[tasks.join(', '), (h.total_bales!=null ? h.total_bales+' bales' : '0 bales'), (h.acres!=null ? h.acres+' acres' : null)].filter(Boolean).join(' · ')}</div>
-              ${(h.acres==null && (h.mowed||h.raked||h.tedded)) ? '<div style="color:#7A2E27;font-size:11px;">No acres recorded — mowing/raking/tedding won\'t be charged</div>' : ''}
+              ${(h.acres==null && (h.mowed||h.raked||h.tedded)) ? '<div style="color:#5C3A21;font-size:11px;">No acres recorded — mowing/raking/tedding won\'t be charged</div>' : ''}
             </div>
             <div class="bill-item-amount" data-id="${h.id}" style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;min-width:60px;text-align:right;">$0.00</div>
           </div>
@@ -11564,7 +11564,7 @@
 
       <div class="section-label" style="margin-top:16px;display:flex;justify-content:space-between;align-items:baseline;">
         <span>Straws Used</span>
-        <span style="font-family:Arial,sans-serif;font-size:11px;color:#7A2E27;font-weight:400;text-transform:none;letter-spacing:0;">Arm service $${armRate.toFixed(2)}/head auto-added</span>
+        <span style="font-family:Arial,sans-serif;font-size:11px;color:#5C3A21;font-weight:400;text-transform:none;letter-spacing:0;">Arm service $${armRate.toFixed(2)}/head auto-added</span>
       </div>
       <div id="jobStrawRows"></div>
       <button class="btn btn-profile-tool btn-full" id="addJobStrawRowBtn" style="margin-bottom:16px;">+ Add straw type</button>
@@ -11601,7 +11601,7 @@
       row.innerHTML = `
         <select style="flex:2;" data-role="straw-name"><option value="">Straw...</option>${options}</select>
         <input type="number" min="1" step="1" placeholder="Qty" style="flex:1;" data-role="straw-qty" value="${existingEntry ? existingEntry.quantity : ''}"/>
-        <span data-role="remove" style="color:#7A2E27;font-family:Arial,sans-serif;font-weight:700;font-size:20px;cursor:pointer;padding:0 6px;">&times;</span>
+        <span data-role="remove" style="color:#5C3A21;font-family:Arial,sans-serif;font-weight:700;font-size:20px;cursor:pointer;padding:0 6px;">&times;</span>
       `;
       row.querySelector('[data-role="remove"]').addEventListener('click', ()=>{ row.remove(); recalc(); });
       row.querySelector('[data-role="straw-name"]').addEventListener('change', recalc);
@@ -11617,7 +11617,7 @@
       row.innerHTML = `
         <select style="flex:2;" data-role="supply-name"><option value="">Select...</option>${options}</select>
         <input type="number" min="1" step="1" placeholder="Qty" style="flex:1;" data-role="supply-qty" value="${existingEntry ? existingEntry.quantity : ''}"/>
-        <span data-role="remove" style="color:#7A2E27;font-family:Arial,sans-serif;font-weight:700;font-size:20px;cursor:pointer;padding:0 6px;">&times;</span>
+        <span data-role="remove" style="color:#5C3A21;font-family:Arial,sans-serif;font-weight:700;font-size:20px;cursor:pointer;padding:0 6px;">&times;</span>
       `;
       row.querySelector('[data-role="remove"]').addEventListener('click', ()=>{ row.remove(); recalc(); });
       row.querySelector('[data-role="supply-name"]').addEventListener('change', recalc);
@@ -11774,7 +11774,7 @@
     const sorted = [...customAIJobs].sort((a,b)=> b.job_date.localeCompare(a.job_date));
     emptyEl.classList.toggle('hidden', sorted.length !== 0);
     listEl.innerHTML = sorted.map(j=>`
-      <div class="record" style="padding:12px 14px;${j.paid ? '' : 'border-left:4px solid #7A2E27;'}">
+      <div class="record" style="padding:12px 14px;${j.paid ? '' : 'border-left:4px solid #5C3A21;'}">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">
           <div>
             <div style="font-weight:700;">${escapeHtml(j.customer_name_cache||'')}</div>
@@ -11782,8 +11782,8 @@
           </div>
           <div style="font-weight:700;font-size:16px;">$${Number(j.job_total).toFixed(2)}</div>
         </div>
-        <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${j.paid ? '#3C9142' : '#7A2E27'};cursor:pointer;">
-          <input type="checkbox" class="paid-checkbox" data-id="${j.id}" ${j.paid ? 'checked' : ''} style="width:18px;height:18px;accent-color:${j.paid ? '#3C9142' : '#7A2E27'};"/>
+        <label style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;color:${j.paid ? '#3C9142' : '#5C3A21'};cursor:pointer;">
+          <input type="checkbox" class="paid-checkbox" data-id="${j.id}" ${j.paid ? 'checked' : ''} style="width:18px;height:18px;accent-color:${j.paid ? '#3C9142' : '#5C3A21'};"/>
           ${j.paid ? 'Paid' : 'Unpaid'}
         </label>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -11876,7 +11876,7 @@
     return `
       <div style="padding:32px;font-family:Georgia,'Iowan Old Style',serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
-          <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#7A2E27;margin:0 0 6px;">${escapeHtml(farmName)}</div>
+          <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5C3A21;margin:0 0 6px;">${escapeHtml(farmName)}</div>
           ${farmStreet ? `<div style="font-family:Arial,sans-serif;font-size:14px;color:#6b6350;">${escapeHtml(farmStreet)}</div>` : ''}
           ${(farmCityState||farmZip) ? `<div style="font-family:Arial,sans-serif;font-size:14px;color:#6b6350;">${escapeHtml(farmCityState)}${farmCityState&&farmZip?' ':''}${escapeHtml(farmZip)}</div>` : ''}
           <h2 style="margin:10px 0 0;font-weight:500;font-size:20px;color:#0C5A8E;text-transform:uppercase;letter-spacing:.05em;">Custom A.I. Service Bill</h2>
@@ -11902,7 +11902,7 @@
         <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b6350;font-family:Arial,sans-serif;margin-bottom:10px;"><span>Drugs and supplies</span><span>$${Number(job.supplies_total).toFixed(2)}</span></div>
         <div style="display:flex;justify-content:space-between;align-items:center;border-top:3px solid #2B2620;padding-top:14px;">
           <span style="font-family:Arial,sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.05em;">Total due</span>
-          <span style="font-size:26px;font-weight:700;color:#7A2E27;">$${Number(job.job_total).toFixed(2)}</span>
+          <span style="font-size:26px;font-weight:700;color:#5C3A21;">$${Number(job.job_total).toFixed(2)}</span>
         </div>
       </div>
     `;
@@ -12001,7 +12001,7 @@
         row.style.cssText = 'padding:8px 0;border-bottom:1px solid #dde6ee;cursor:pointer;' + (i%2 ? 'background:#F4F8FC;' : '');
         row.innerHTML = `
           <div style="${grid}font-size:13px;">
-            <b style="color:${soon ? '#7A2E27' : (done ? '#3C9142' : 'inherit')};">${done ? 'Paid' : escapeHtml(dueShort)}</b>
+            <b style="color:${soon ? '#5C3A21' : (done ? '#3C9142' : 'inherit')};">${done ? 'Paid' : escapeHtml(dueShort)}</b>
             <span><b>${escapeHtml(p.name)}</b><br><span style="font-size:11px;color:#6b6350;">${escapeHtml(p.lender||'')}</span></span>
             <b style="text-align:right;">${escapeHtml(payMoney(p.amount))}</b>
           </div>${bar}
@@ -13680,7 +13680,7 @@
       const latest = dates.length ? dates[dates.length - 1] : '';
       const nLatest = dates.filter(d=> d === latest).length;
       hint = document.createElement('div'); hint.id = 'gsEmptyHint'; hint.className = 'gs-sum';
-      hint.style.borderColor = '#7A2E27'; hint.style.color = '#7A2E27';
+      hint.style.borderColor = '#5C3A21'; hint.style.color = '#5C3A21';
       hint.textContent = latest
         ? 'Nothing matched. The most recent weaning date on file is ' + fmtDateShort(latest) + ' (' + nLatest + ' calves). Today on this device is ' + fmtDateShort(gsDateStr(0)) + '.'
         : 'Nothing matched, and no calves have a weaning date yet.';
@@ -17266,7 +17266,7 @@
     rec.maxAlternatives = 3;
     const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908;<span style="font-size:13px;">Voice</span>'; btn.style.background = ''; };
     btn.innerHTML = '&#127908;<span style="font-size:12px;">Listening</span>';
-    btn.style.background = '#7A2E27';
+    btn.style.background = '#5C3A21';
     let heard = false;
     rec.onresult = (ev)=>{
       heard = true;

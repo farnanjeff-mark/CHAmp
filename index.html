@@ -1,38 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-(function(){
-  window.__champSteps=['page opened'];
-  var bar;
-  function ensure(){
-    if(bar) return bar;
-    bar=document.createElement('div');
-    bar.id='testErrBar';
-    bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B00020;color:#fff;font:12px/1.35 Arial,sans-serif;padding:6px 8px;max-height:40vh;overflow:auto;white-space:pre-wrap;display:none;';
-    (document.body||document.documentElement).appendChild(bar);
-    return bar;
-  }
-  function show(msg){
-    try{ var b=ensure(); b.style.display='block'; b.textContent += (b.textContent?'\n':'') + msg; }catch(e){}
-  }
-  window.addEventListener('error',function(e){ show('ERROR: '+(e.message||'unknown')+' (line '+(e.lineno||'?')+')'); });
-  window.addEventListener('unhandledrejection',function(e){ show('PROMISE ERROR: '+String((e.reason&&e.reason.message)||e.reason||'unknown').slice(0,200)); });
-  window.__testShow=show;
-  // status strip at the bottom so we can see how far the app got
-  window.addEventListener('load',function(){
-    var st=document.createElement('div');
-    st.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483646;background:#0C5A8E;color:#fff;font:11px/1.3 Arial,sans-serif;padding:4px 8px;';
-    document.body.appendChild(st);
-    var t0=Date.now();
-    setInterval(function(){
-      var n=(document.getElementById('homeOpenBadge')||{}).textContent;
-      st.textContent='DIAG · '+Math.round((Date.now()-t0)/1000)+'s · steps: '+window.__champSteps.join(' > ')+' · Open box: '+n;
-    },500);
-  });
-})();
-</script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>CHAmp</title>
@@ -2012,7 +1980,6 @@
 
 <script>
 (function(){
-  window.__champSteps.push('code running');
   // ---- Supabase connection ----
   const SUPABASE_URL = 'https://nuutfigyhjyqhtxotuln.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_jvBVaIs5ZYmOUuE8o28mqQ_RMipD5Xw';
@@ -2452,7 +2419,6 @@
     isLoadingAll = true;
     try{
       await loadAllInner();
-      window.__champSteps.push('data loaded (' + cows.length + ' cows)');
     } finally {
       isLoadingAll = false;
     }
@@ -17558,7 +17524,6 @@
   });
 
   // ---- Initial load ----
-  window.__champSteps.push('buttons wired');
   loadAll();
 
   document.addEventListener('visibilitychange', ()=>{

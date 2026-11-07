@@ -1,6 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+(function(){
+  window.__champSteps=['page opened'];
+  var bar;
+  function ensure(){
+    if(bar) return bar;
+    bar=document.createElement('div');
+    bar.id='testErrBar';
+    bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483647;background:#B00020;color:#fff;font:12px/1.35 Arial,sans-serif;padding:6px 8px;max-height:40vh;overflow:auto;white-space:pre-wrap;display:none;';
+    (document.body||document.documentElement).appendChild(bar);
+    return bar;
+  }
+  function show(msg){
+    try{ var b=ensure(); b.style.display='block'; b.textContent += (b.textContent?'\n':'') + msg; }catch(e){}
+  }
+  window.addEventListener('error',function(e){ show('ERROR: '+(e.message||'unknown')+' (line '+(e.lineno||'?')+')'); });
+  window.addEventListener('unhandledrejection',function(e){ show('PROMISE ERROR: '+String((e.reason&&e.reason.message)||e.reason||'unknown').slice(0,200)); });
+  window.__testShow=show;
+  // status strip at the bottom so we can see how far the app got
+  window.addEventListener('load',function(){
+    var st=document.createElement('div');
+    st.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483646;background:#0C5A8E;color:#fff;font:11px/1.3 Arial,sans-serif;padding:4px 8px;';
+    document.body.appendChild(st);
+    var t0=Date.now();
+    setInterval(function(){
+      var n=(document.getElementById('homeOpenBadge')||{}).textContent;
+      st.textContent='DIAG · '+Math.round((Date.now()-t0)/1000)+'s · steps: '+window.__champSteps.join(' > ')+' · Open box: '+n;
+    },500);
+  });
+})();
+</script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>CHAmp</title>
@@ -611,6 +643,16 @@
           <span style="font-size:22px;line-height:1;">🔧</span>
           <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0;line-height:1.1;text-align:center;white-space:nowrap;">Bulk Entry</span>
         </div>
+        <div id="homeHeatWatchWrap" role="button" aria-label="Heat Watch" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
+          <span id="homeHeatWatchBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
+          <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;">Heat Watch</span>
+        </div>
+        <div id="homeInHeatWrap" role="button" aria-label="In Heat" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
+          <span id="homeInHeatBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
+          <span style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;white-space:nowrap;">In Heat</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;padding-top:6px;margin-bottom:12px;">
         <div id="homeSyncHoldWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:#3C9142;border:1.5px solid #fff;border-radius:10px;padding:8px 2px;cursor:pointer;">
           <span id="homeSyncHoldBadge" style="font-size:26px;font-weight:400;color:#fff;line-height:1;">0</span>
           <span id="homeSyncHoldLabel" style="font-family:Arial,sans-serif;font-size:11px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Sync On</span>
@@ -1970,6 +2012,7 @@
 
 <script>
 (function(){
+  window.__champSteps.push('code running');
   // ---- Supabase connection ----
   const SUPABASE_URL = 'https://nuutfigyhjyqhtxotuln.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_jvBVaIs5ZYmOUuE8o28mqQ_RMipD5Xw';
@@ -2209,6 +2252,7 @@
     needs_entry: { flag: '_pendingFlagSync',   attr: 'data-pending-flag-num' },
     preg_bt:     { flag: '_pendingPregBtSync', attr: 'data-pending-pregbt-num' },
     sell:        { flag: '_pendingSellSync',   attr: 'data-pending-sell-num' },
+    in_heat:     { flag: '_pendingHeatSync',   attr: 'data-pending-heat-num' },
     status:      { flag: '_pendingStatusSync', attr: 'data-pending-status-num' },
     lot:         { flag: '_pendingLotSync',    attr: 'data-pending-lot-num' },
     owner:       { flag: '_pendingOwnerSync',  attr: 'data-pending-owner-num' },
@@ -2408,6 +2452,7 @@
     isLoadingAll = true;
     try{
       await loadAllInner();
+      window.__champSteps.push('data loaded (' + cows.length + ' cows)');
     } finally {
       isLoadingAll = false;
     }
@@ -2717,6 +2762,8 @@
       if(!c.preg_bt) return false;
     } else if(filterKind === 'sell'){
       if(!c.sell) return false;
+    } else if(filterKind === 'heat'){
+      if(!c.in_heat) return false;
     } else if(filterKind === 'herd'){
       if(c.herd_season !== filterValue) return false;
     } else if(filterKind === 'act'){
@@ -2744,6 +2791,7 @@
     const hasCalved = cows.some(c=>c.calved);
     const hasPregBt = cows.some(c=>c.preg_bt);
     const hasSell = cows.some(c=>c.sell);
+    const hasInHeat = cows.some(c=>c.in_heat);
     const hasSpring = cows.some(c=>c.herd_season==='Spring');
     const hasFall = cows.some(c=>c.herd_season==='Fall');
 
@@ -2769,6 +2817,7 @@
       (hasCalved ? '<option value="calved:1">Calved</option>' : '') +
       (hasPregBt ? '<option value="pregbt:1">Preg BT</option>' : '') +
       (hasSell ? '<option value="sell:1">Sell</option>' : '') +
+      (hasInHeat ? '<option value="heat:1">In Heat</option>' : '') +
       (hasSpring ? '<option value="herd:Spring">Spring Herd</option>' : '') +
       (hasFall ? '<option value="herd:Fall">Fall Herd</option>' : '');
     sel.innerHTML = '<option value="">All Locations / Groups / Owners</option>' +
@@ -5103,6 +5152,10 @@
     pendingProfileFilterOverride = 'pregbt:1';
     showProfileList();
   }
+  function showProfileListInHeat(){
+    pendingProfileFilterOverride = 'heat:1';
+    showProfileList();
+  }
   function showProfileListSell(){
     pendingProfileFilterOverride = 'sell:1';
     showProfileList();
@@ -5629,13 +5682,82 @@
     });
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
+    updateHeatWatchBadge();
   }
+  // ===== Heat Watch (added Nov 6) =====
+  // Active cows whose most recent breeding was 18 to 24 days ago (AI or ET, or no method), not yet marked Bred or Open.
+  // This is the window when a cow that did not settle comes back into heat.
+  function heatWatchEntries(){
+    const out = [];
+    const today = new Date(todayLocal() + 'T00:00:00');
+    cows.forEach(cow=>{
+      if(!isActiveStatus(cow)) return;
+      const list = breedingFor(cow.number);
+      if(!list.length) return;
+      const latest = [...list].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
+      if(latest.pregnancy_status === 'Bred' || latest.pregnancy_status === 'Open') return;
+      if(latest.pregnancy_method === 'BB') return;
+      const days = Math.round((today - new Date(latest.breed_date + 'T00:00:00')) / 86400000);
+      if(days >= 18 && days <= 24) out.push({ cow, breeding: latest, days });
+    });
+    out.sort((a,b)=> b.days - a.days || cowNumCmp(a.cow.number, b.cow.number));
+    return out;
+  }
+  function updateHeatWatchBadge(){
+    const badge = document.getElementById('homeHeatWatchBadge');
+    if(!badge) return;
+    const n = heatWatchEntries().length;
+    badge.textContent = n > 99 ? '99+' : n;
+  }
+  function heatWatchModal(){
+    const entries = heatWatchEntries();
+    const modal = openModal(`
+      <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>Heat Watch</span>
+        <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
+      </div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Cows bred 18 to 24 days ago that are not yet marked Bred or Open. If one is in heat again, tick In Heat on her card. Natural-breeding (BB) cows are left out.</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:10px;">${entries.length} cow${entries.length!==1?'s':''} to watch</div>
+      <div id="heatWatchTable" style="overflow-x:auto;margin-bottom:14px;"></div>
+      <div id="heatWatchList" style="margin-bottom:14px;"></div>
+      <div class="modal-actions"><button class="btn btn-outline btn-full" id="closeHeatWatchBtn">Close</button></div>
+    `);
+    const tableEl = modal.querySelector('#heatWatchTable');
+    const listEl = modal.querySelector('#heatWatchList');
+    if(!entries.length){
+      listEl.innerHTML = '<p class="empty">No cows in the 18 to 24 day window.</p>';
+    }else{
+      const rows = entries.map((e,i)=>{
+        const bredTo = (typeof bredToText === 'function' ? bredToText(e.breeding) : '') || '';
+        const peak = (e.days >= 20 && e.days <= 22);
+        return `<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="padding:8px;"><b>#${escapeHtml(e.cow.number)}</b></td><td style="padding:8px;${peak ? 'font-weight:700;color:#0C5A8E;' : ''}">Day ${e.days}</td><td style="padding:8px;">${escapeHtml(fmtDateShort(e.breeding.breed_date))}</td><td style="padding:8px;">${escapeHtml(e.breeding.pregnancy_method || '')}</td><td style="padding:8px;">${escapeHtml(bredTo)}</td><td style="padding:8px;text-align:center;">${e.cow.in_heat ? '✓' : ''}</td></tr>`;
+      }).join('');
+      tableEl.innerHTML = `
+        <table style="width:auto;min-width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
+          <thead><tr style="background:#EFE8D8;"><th style="text-align:left;padding:8px;">Cow #</th><th style="text-align:left;padding:8px;">Day</th><th style="text-align:left;padding:8px;">Bred</th><th style="text-align:left;padding:8px;">Method</th><th style="text-align:left;padding:8px;">Bred to</th><th style="text-align:center;padding:8px;">In Heat</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+      wireTableRowsToCards(tableEl, heatWatchModal, '← Back to Heat Watch');
+    }
+    modal.querySelector('#closeHeatWatchBtn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+  }
+  document.getElementById('homeHeatWatchWrap').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    heatWatchModal();
+  });
   function updatePregBtBadge(){
     const badge = document.getElementById('homePregBtBadge');
     const wrap = document.getElementById('homePregBtWrap');
     if(!badge || !wrap) return;
     const count = cows.filter(c=>c.preg_bt).length;
     wrap.classList.remove('hidden');
+    badge.textContent = count > 99 ? '99+' : count;
+  }
+  function updateInHeatBadge(){
+    const badge = document.getElementById('homeInHeatBadge');
+    if(!badge) return;
+    const count = cows.filter(c=>c.in_heat).length;
     badge.textContent = count > 99 ? '99+' : count;
   }
   function updateSellBadge(){
@@ -5645,6 +5767,7 @@
     const count = cows.filter(c=>c.sell).length;
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
+    updateInHeatBadge();
   }
   function updateSyncHoldBadge(){
     const badge = document.getElementById('homeSyncHoldBadge');
@@ -6366,6 +6489,7 @@
           })
         ));
         results.forEach(r=> breedingRecords.push(r[0]));
+        for(const cow of targetCows){ await clearHeatAfterBreeding(cow.number); }
         closeModal();
         renderProfileList();
         window.scrollTo(0,0);
@@ -8881,6 +9005,7 @@
             body: JSON.stringify(Object.assign({ cow_number: currentBreedingCow }, body))
           });
           breedingRecords.push(inserted[0]);
+          await clearHeatAfterBreeding(currentBreedingCow);
         }
         saveOfflineCache();
         closeModal();
@@ -8901,6 +9026,7 @@
             body: Object.assign({ cow_number: currentBreedingCow }, body)
           });
           saveOfflineCache();
+          await clearHeatAfterBreeding(currentBreedingCow);
           closeModal();
           renderBreedingDetail();
           renderBreedingList();
@@ -9480,6 +9606,10 @@
     e.stopPropagation();
     showProfileListPregBt();
   });
+  document.getElementById('homeInHeatWrap').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    showProfileListInHeat();
+  });
   document.getElementById('homeSellWrap').addEventListener('click', (e)=>{
     e.stopPropagation();
     showProfileListSell();
@@ -9841,6 +9971,62 @@
       }
     }
   }
+  // ===== In Heat checkbox (added Nov 6) =====
+  function inHeatCheckboxHtml(cow){
+    return `<span style="position:relative;display:inline-block;">
+      <input type="checkbox" class="heat-check rc-check" data-num="${escapeHtml(cow.number)}" ${cow.in_heat ? 'checked' : ''} title="In Heat" style="--rc-color:#0274BA;"/>
+      <span data-pending-heat-num="${escapeHtml(cow.number)}" style="display:${cow._pendingHeatSync ? 'block' : 'none'};position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#A32D2D;border:1.5px solid #fff;"></span>
+    </span>`;
+  }
+  function wireInHeatCheckboxes(container){
+    container.querySelectorAll('.heat-check').forEach(cb=>{
+      cb.addEventListener('click', e=> e.stopPropagation());
+      cb.addEventListener('change', async e=>{
+        e.stopPropagation();
+        await toggleInHeat(cb.dataset.num, cb.checked);
+      });
+    });
+  }
+  // When a new breeding is logged, the cow is no longer "in heat": untick her box.
+  async function clearHeatAfterBreeding(num){
+    const c = cows.find(x=>x.number===num);
+    if(c && c.in_heat) await toggleInHeat(num, false);
+  }
+  async function toggleInHeat(num, checked){
+    const body = { in_heat: checked };
+    try{
+      const updated = await api('/cows?number=eq.' + encodeURIComponent(num), {
+        method:'PATCH',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify(body)
+      });
+      const idx = cows.findIndex(c=>c.number===num);
+      if(idx !== -1) cows[idx] = updated[0];
+      saveOfflineCache();
+      updateSyncHoldBadge();
+      updateInHeatBadge();
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        const idx = cows.findIndex(c=>c.number===num);
+        if(idx !== -1) cows[idx] = Object.assign({}, cows[idx], body, { _pendingHeatSync: true });
+        queuePendingWrite({
+          localId: makeLocalId('pw'),
+          kind: 'update', table: 'cows', field: 'in_heat', cowNumber: num,
+          method: 'PATCH', path: '/cows?number=eq.' + encodeURIComponent(num),
+          body
+        });
+        saveOfflineCache();
+        document.querySelectorAll('[data-pending-heat-num="'+CSS.escape(num)+'"]').forEach(el=> el.style.display='block');
+        showToast('Saved on this phone — will sync when you have signal');
+        updateSyncHoldBadge();
+        updateInHeatBadge();
+      } else {
+        // put the box back the way it was
+        document.querySelectorAll('.heat-check[data-num="'+CSS.escape(num)+'"]').forEach(el=> el.checked = !checked);
+        showToast('Could not save — try again');
+      }
+    }
+  }
   function sellCheckboxHtml(cow){
     return `<span style="position:relative;display:inline-block;">
       <input type="checkbox" class="sell-check rc-check" data-num="${escapeHtml(cow.number)}" ${cow.sell ? 'checked' : ''} title="Sell" style="--rc-color:#0274BA;"/>
@@ -9848,6 +10034,7 @@
     </span>`;
   }
   function wireSellCheckboxes(container){
+    wireInHeatCheckboxes(container);
     container.querySelectorAll('.sell-check').forEach(cb=>{
       cb.addEventListener('click', e=> e.stopPropagation());
       cb.addEventListener('change', async e=>{
@@ -10158,35 +10345,39 @@
     return `
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
         <div style="background:#fff;padding:16px 18px;cursor:pointer;border-bottom:1px solid #eee;" data-open-num="${escapeHtml(cow.number)}">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;">
-            <div style="flex:0 0 92px;min-width:0;overflow:hidden;padding-right:4px;">
+          <div>
+            <div style="min-width:0;">
               <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
               <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
             </div>
-            <div style="display:flex;flex-shrink:0;">
-              <div style="width:41px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="display:flex;margin-top:12px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${tagNeededCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Tag</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Tag</span>
               </div>
-              <div style="width:41px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${calvedCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Calved</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Calved</span>
               </div>
-              <div style="width:41px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${needsEntryCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Flag</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Flag</span>
               </div>
-              <div style="width:41px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${openCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Open</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Open</span>
               </div>
-              <div style="width:44px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${pregBtCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Preg BT</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Preg BT</span>
               </div>
-              <div style="width:38px;display:flex;flex-direction:column;align-items:center;gap:3px;">
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                ${inHeatCheckboxHtml(cow)}
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">In Heat</span>
+              </div>
+              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
                 ${sellCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;">Sell</span>
+                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Sell</span>
               </div>
             </div>
           </div>
@@ -17367,6 +17558,7 @@
   });
 
   // ---- Initial load ----
+  window.__champSteps.push('buttons wired');
   loadAll();
 
   document.addEventListener('visibilitychange', ()=>{

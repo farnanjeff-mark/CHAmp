@@ -2413,12 +2413,29 @@
     return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
   }
 
+  // ===== In Heat log (added Nov 6): one row each time a cow is ticked In Heat =====
+  const HEAT_LOG_KEY = 'champ_heat_log_v1';
+  let heatLog = [];   // [{id, cow_number, heated_at}]  newest first
+  try{ heatLog = JSON.parse(localStorage.getItem(HEAT_LOG_KEY) || '[]'); if(!Array.isArray(heatLog)) heatLog = []; }catch(e){ heatLog = []; }
+  function saveHeatLogCache(){ try{ localStorage.setItem(HEAT_LOG_KEY, JSON.stringify(heatLog.slice(0, 2000))); }catch(e){} }
+  async function loadHeatLog(){
+    try{
+      const rows = await api('/heat_log?select=*&order=heated_at.desc', { method:'GET' });
+      if(Array.isArray(rows)){
+        // keep any entries still waiting to sync (they have a temporary id)
+        const pending = heatLog.filter(h=> String(h.id).startsWith('tmp-'));
+        heatLog = pending.concat(rows);
+        saveHeatLogCache();
+      }
+    }catch(e){ /* no signal: keep what is saved on this phone */ }
+  }
   let isLoadingAll = false;
   async function loadAll(){
     if(isLoadingAll) return;
     isLoadingAll = true;
     try{
       await loadAllInner();
+      loadHeatLog();
     } finally {
       isLoadingAll = false;
     }
@@ -5719,6 +5736,60 @@
     const count = cows.filter(c=>c.preg_bt).length;
     wrap.classList.remove('hidden');
     badge.textContent = count > 99 ? '99+' : count;
+  }
+  function heatReportModal(){
+    const rows = heatLog.slice().sort((a,b)=> String(b.heated_at).localeCompare(String(a.heated_at)));
+    const loggedNums = new Set(rows.map(r=>r.cow_number));
+    // cows ticked In Heat before logging began have no time on record
+    const noTime = cows.filter(c=> c.in_heat && !loggedNums.has(c.number));
+    const nowCount = cows.filter(c=>c.in_heat).length;
+    const fmtD = iso => new Date(iso).toLocaleDateString('en-US', { month:'numeric', day:'numeric', year:'2-digit' });
+    const fmtT = iso => new Date(iso).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    const localDay = iso => { const d = new Date(iso); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+    function breedInfo(num, iso){
+      const day = localDay(iso);
+      const b = breedingFor(num).filter(x=> x.breed_date && x.breed_date <= day).sort((a,c)=> c.breed_date.localeCompare(a.breed_date))[0];
+      if(!b) return { days:'', bredTo:'' };
+      const d = Math.round((new Date(day + 'T00:00:00') - new Date(b.breed_date + 'T00:00:00')) / 86400000);
+      return { days: 'Day ' + d, bredTo: (typeof bredToText === 'function' ? bredToText(b) : '') || '' };
+    }
+    const td = 'padding:8px;';
+    const body = [];
+    rows.forEach((r,i)=>{
+      const info = breedInfo(r.cow_number, r.heated_at);
+      const cow = cows.find(c=>c.number===r.cow_number);
+      body.push(`<tr style="background:${i%2===0?'#fff':'#F7F2E6'};"><td style="${td}"><b>#${escapeHtml(r.cow_number)}</b></td><td style="${td}">${escapeHtml(fmtD(r.heated_at))}</td><td style="${td}">${escapeHtml(fmtT(r.heated_at))}</td><td style="${td}">${escapeHtml(info.days)}</td><td style="${td}">${escapeHtml(info.bredTo)}</td><td style="${td}text-align:center;">${cow && cow.in_heat ? '✓' : ''}</td></tr>`);
+    });
+    noTime.forEach((c,i)=>{
+      body.push(`<tr style="background:${(rows.length+i)%2===0?'#fff':'#F7F2E6'};"><td style="${td}"><b>#${escapeHtml(c.number)}</b></td><td style="${td}color:#8a8163;" colspan="2">time not recorded</td><td style="${td}"></td><td style="${td}"></td><td style="${td}text-align:center;">✓</td></tr>`);
+    });
+    const modal = openModal(`
+      <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>In Heat Report</span>
+        <button class="modal-top-close-btn" style="background:none;border:none;font-size:26px;color:#a08f6b;cursor:pointer;line-height:1;padding:0 2px;">&times;</button>
+      </div>
+      <div style="font-family:Arial,sans-serif;font-size:12px;color:#8a8163;margin-bottom:10px;">Each time a cow is ticked In Heat, the date and time are saved here. "Day" is days since her breeding at that time. The check mark means she is marked In Heat right now.</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:10px;">${nowCount} in heat now · ${rows.length} logged</div>
+      <div id="heatReportTable" style="overflow-x:auto;margin-bottom:14px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline btn-full" id="heatShowCardsBtn">Show Cards</button>
+        <button class="btn btn-outline btn-full" id="closeHeatReportBtn">Close</button>
+      </div>
+    `);
+    const tableEl = modal.querySelector('#heatReportTable');
+    if(!body.length){
+      tableEl.innerHTML = '<p class="empty">No cows have been marked In Heat yet.</p>';
+    }else{
+      tableEl.innerHTML = `
+        <table style="width:auto;min-width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
+          <thead><tr style="background:#EFE8D8;"><th style="text-align:left;${td}">Cow #</th><th style="text-align:left;${td}">Date</th><th style="text-align:left;${td}">Time</th><th style="text-align:left;${td}">Day</th><th style="text-align:left;${td}">Bred to</th><th style="text-align:center;${td}">Now</th></tr></thead>
+          <tbody>${body.join('')}</tbody>
+        </table>`;
+      wireTableRowsToCards(tableEl, heatReportModal, '← Back to In Heat Report');
+    }
+    modal.querySelector('#closeHeatReportBtn').addEventListener('click', closeModal);
+    modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+    modal.querySelector('#heatShowCardsBtn').addEventListener('click', ()=>{ closeModal(); showProfileListInHeat(); });
   }
   function updateInHeatBadge(){
     const badge = document.getElementById('homeInHeatBadge');
@@ -9574,7 +9645,7 @@
   });
   document.getElementById('homeInHeatWrap').addEventListener('click', (e)=>{
     e.stopPropagation();
-    showProfileListInHeat();
+    heatReportModal();
   });
   document.getElementById('homeSellWrap').addEventListener('click', (e)=>{
     e.stopPropagation();
@@ -9958,7 +10029,25 @@
     const c = cows.find(x=>x.number===num);
     if(c && c.in_heat) await toggleInHeat(num, false);
   }
+  async function logHeatTick(num){
+    const iso = new Date().toISOString();
+    const tempId = makeLocalId('tmp');
+    heatLog.unshift({ id: tempId, cow_number: num, heated_at: iso });
+    saveHeatLogCache();
+    const body = { cow_number: num, heated_at: iso };
+    try{
+      const rows = await api('/heat_log', { method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}), body: JSON.stringify(body) });
+      const idx = heatLog.findIndex(h=>h.id===tempId);
+      if(idx !== -1 && rows && rows[0]) heatLog[idx] = rows[0];
+      saveHeatLogCache();
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        queuePendingWrite({ localId: makeLocalId('pw'), kind:'insert', table:'heat_log', tempId, method:'POST', path:'/heat_log', body });
+      }
+    }
+  }
   async function toggleInHeat(num, checked){
+    if(checked) logHeatTick(num);
     const body = { in_heat: checked };
     try{
       const updated = await api('/cows?number=eq.' + encodeURIComponent(num), {

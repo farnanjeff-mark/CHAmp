@@ -492,9 +492,19 @@
   @media print{ #vaultOverlay,.vlt-toast{display:none !important;} }
   #homeView span, #homeView button, #homeView [role="button"]{text-transform:none !important;}
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.44.0/tabler-icons.min.css">
+<script>
+  // Spreadsheet export library: load it quietly AFTER the app is on screen, so a slow connection can never leave a white page.
+  window.addEventListener('load', function(){
+    setTimeout(function(){
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+      s.async = true;
+      document.head.appendChild(s);
+    }, 1500);
+  });
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.44.0/tabler-icons.min.css" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.44.0/tabler-icons.min.css"></noscript>
 </head>
 <body>
 
@@ -9973,7 +9983,6 @@
     }
   }
   async function toggleInHeat(num, checked){
-    if(checked) logHeatTick(num);
     const body = { in_heat: checked };
     try{
       const updated = await api('/cows?number=eq.' + encodeURIComponent(num), {
@@ -9982,7 +9991,10 @@
         body: JSON.stringify(body)
       });
       const idx = cows.findIndex(c=>c.number===num);
-      if(idx !== -1) cows[idx] = updated[0];
+      if(idx !== -1){
+        cows[idx] = (updated && updated[0]) ? updated[0] : Object.assign({}, cows[idx], body);
+      }
+      if(checked) logHeatTick(num);
       saveOfflineCache();
       updateSyncHoldBadge();
       updateInHeatBadge();
@@ -9990,6 +10002,7 @@
       if(e && e.isNetworkFailure){
         const idx = cows.findIndex(c=>c.number===num);
         if(idx !== -1) cows[idx] = Object.assign({}, cows[idx], body, { _pendingHeatSync: true });
+        if(checked) logHeatTick(num);
         queuePendingWrite({
           localId: makeLocalId('pw'),
           kind: 'update', table: 'cows', field: 'in_heat', cowNumber: num,
@@ -10035,7 +10048,7 @@
         body: JSON.stringify(body)
       });
       const idx = cows.findIndex(c=>c.number===num);
-      if(idx !== -1) cows[idx] = updated[0];
+      if(idx !== -1) cows[idx] = (updated && updated[0]) ? updated[0] : Object.assign({}, cows[idx], body);
       saveOfflineCache();
       updateSellBadge();
         updateSyncHoldBadge();

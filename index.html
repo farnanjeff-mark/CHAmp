@@ -5696,8 +5696,8 @@
     const body = list.map((e,i)=>{
       const bg = i%2===0 ? '#fff' : '#F7F2E6';
       return e.at
-        ? `<tr style="background:${bg};"><td style="${td}"><b>#${escapeHtml(e.cow.number)}</b></td><td style="${td}">${escapeHtml(fmtD(e.at))}</td><td style="${td}">${escapeHtml(fmtT(e.at))}</td></tr>`
-        : `<tr style="background:${bg};"><td style="${td}"><b>#${escapeHtml(e.cow.number)}</b></td><td style="${td}color:#8a8163;" colspan="2">time not recorded</td></tr>`;
+        ? `<tr style="background:${bg};"><td style="${td}"><b>#${escapeHtml(e.cow.number)}</b></td><td style="${td}">${escapeHtml(e.cow.lot || '')}</td><td style="${td}">${escapeHtml(fmtD(e.at))}</td><td style="${td}">${escapeHtml(fmtT(e.at))}</td></tr>`
+        : `<tr style="background:${bg};"><td style="${td}"><b>#${escapeHtml(e.cow.number)}</b></td><td style="${td}">${escapeHtml(e.cow.lot || '')}</td><td style="${td}color:#8a8163;" colspan="2">time not recorded</td></tr>`;
     }).join('');
     const modal = openModal(`
       <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -5718,7 +5718,7 @@
     }else{
       tableEl.innerHTML = `
         <table style="width:auto;min-width:100%;border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;white-space:nowrap;">
-          <thead><tr style="background:#EFE8D8;"><th style="text-align:left;${td}">Cow #</th><th style="text-align:left;${td}">Date</th><th style="text-align:left;${td}">Time</th></tr></thead>
+          <thead><tr style="background:#EFE8D8;"><th style="text-align:left;${td}">Cow #</th><th style="text-align:left;${td}">Location</th><th style="text-align:left;${td}">Date</th><th style="text-align:left;${td}">Time</th></tr></thead>
           <tbody>${body}</tbody>
         </table>`;
       wireTableRowsToCards(tableEl, heatReportModal, '← Back to In Heat Report');

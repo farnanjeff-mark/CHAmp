@@ -2486,14 +2486,14 @@
     }catch(e){ /* no signal: keep what is saved on this phone */ }
   }
   // ===== App settings (added Nov 11): shared by every device, saved in the app_settings table =====
-  // Setting "show_la_breeding_activity": off (default) hides breeding entries for cows owned by LA
+  // Setting "hide_la_breeding_activity": on (default) hides breeding entries for cows owned by LA
   // from Today's Activity and the Activity count. Nothing is deleted.
   const APP_SETTINGS_KEY = 'champ_app_settings_v1';
-  let showLaBreeding = false;
-  try{ showLaBreeding = (JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}').show_la_breeding_activity === 'true'); }catch(e){ showLaBreeding = false; }
-  function syncLaToggle(){ const t = document.getElementById('showLaBreedingToggle'); if(t) t.checked = showLaBreeding; }
+  let hideLaBreeding = true;
+  try{ hideLaBreeding = (JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}').hide_la_breeding_activity !== 'false'); }catch(e){ hideLaBreeding = true; }
+  function syncLaToggle(){ const t = document.getElementById('showLaBreedingToggle'); if(t) t.checked = hideLaBreeding; }
   function breedingHiddenFor(num){
-    if(showLaBreeding) return false;
+    if(!hideLaBreeding) return false;
     const cow = cows.find(c=>c.number===num);
     return !!(cow && cow.owner === 'LA');
   }
@@ -2503,7 +2503,7 @@
       if(Array.isArray(rows)){
         const map = {};
         rows.forEach(r=>{ map[r.key] = r.value; });
-        showLaBreeding = (map.show_la_breeding_activity === 'true');
+        hideLaBreeding = (map.hide_la_breeding_activity !== 'false');
         try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
         syncLaToggle();
         if(typeof updateTodaysActivityBadge === 'function') updateTodaysActivityBadge();
@@ -2514,10 +2514,10 @@
     try{
       await api('/app_settings', {
         method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'resolution=merge-duplicates,return=representation'}),
-        body: JSON.stringify({ key:'show_la_breeding_activity', value: on ? 'true' : 'false', updated_at: new Date().toISOString() })
+        body: JSON.stringify({ key:'hide_la_breeding_activity', value: on ? 'true' : 'false', updated_at: new Date().toISOString() })
       });
-      showLaBreeding = on;
-      try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify({ show_la_breeding_activity: on ? 'true' : 'false' })); }catch(e){}
+      hideLaBreeding = on;
+      try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify({ hide_la_breeding_activity: on ? 'true' : 'false' })); }catch(e){}
       updateTodaysActivityBadge();
     }catch(e){
       syncLaToggle();   // could not save: put the switch back the way it was
@@ -2557,7 +2557,7 @@
       </div>
       <div id="settingsBody" class="hidden">
         <label class="setting-row" for="showLaBreedingToggle">
-          <span>Show LA breeding activity<span class="setting-sub">In the Activity report and its count. Off hides cows owned by LA.</span></span>
+          <span>Hide LA breeding activity<span class="setting-sub">On hides breedings of cows owned by LA from the Activity report and its count.</span></span>
           <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
         </label>
         <div class="modal-actions"><button class="btn btn-barn btn-full" id="settingsCloseBtn">Close</button></div>

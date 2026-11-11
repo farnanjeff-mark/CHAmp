@@ -20380,7 +20380,22 @@ $("impGo").onclick = () => {
 
   // ---------- wiring ----------
   var openBtn = $('checkbookBtn');
-  if(openBtn) openBtn.addEventListener('click', openCB);
+  // The register is laid out for a computer screen, so narrow screens (phones) only get a short message.
+  var DESKTOP_MIN_WIDTH = 900, narrowT = null;
+  function onOpenClick(){
+    if(window.innerWidth < DESKTOP_MIN_WIDTH){
+      var t = $('toast');
+      if(t){
+        t.textContent = 'Open CHAmp on a computer to use the Checkbook.';
+        t.classList.add('show');
+        clearTimeout(narrowT);
+        narrowT = setTimeout(function(){ t.classList.remove('show'); }, 3500);
+      }
+      return;
+    }
+    openCB();
+  }
+  if(openBtn) openBtn.addEventListener('click', onOpenClick);
   $('cbCloseLockBtn').addEventListener('click', closeCB);
   $('cbCloseBtn').addEventListener('click', closeCB);
   $('cbLockNowBtn').addEventListener('click', lockNow);

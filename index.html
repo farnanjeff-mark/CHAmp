@@ -124,6 +124,15 @@
   .btn-yellow{background:var(--tag);color:var(--ink);border-color:var(--tag);}
   .btn-nav-section{background:#0274BA;color:#fff;border-color:#0274BA;text-align:left;display:flex;align-items:center;gap:10px;}
   .btn-nav-tool{background:#2E88C4;color:#fff;border-color:#2E88C4;text-align:left;display:flex;align-items:center;gap:10px;}
+  /* Settings toggle switch (added Nov 11): blue when on, gray when off. Used in Utilities > Settings. */
+  .setting-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:1.5px solid #2E88C4;border-radius:10px;padding:11px 14px;margin-bottom:12px;font-family:Arial,sans-serif;font-size:14px;color:#0C5A8E;font-weight:700;}
+  .setting-row .setting-sub{display:block;font-size:11px;font-weight:400;color:#44627F;margin-top:2px;}
+  .switch{position:relative;display:inline-block;width:50px;height:28px;flex:none;}
+  .switch input{opacity:0;width:0;height:0;position:absolute;}
+  .switch .slider{position:absolute;inset:0;background:#B8C4CF;border-radius:28px;cursor:pointer;transition:background .2s;}
+  .switch .slider::before{content:"";position:absolute;height:22px;width:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch input:checked + .slider{background:#2E88C4;}
+  .switch input:checked + .slider::before{transform:translateX(22px);}
   .btn-profile-nav{background:#0274BA;color:#fff;border-color:#0274BA;}
   .btn-profile-tool{background:#3C9142;color:#fff;border-color:#3C9142;}
   .btn-full{width:100%;}
@@ -678,6 +687,12 @@
 
     <div class="section-label">Records</div>
     <button class="btn btn-outline btn-full" id="recentlyDeletedBtn" style="text-align:left;display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;margin-bottom:12px;"><span style="font-size:18px;">🗑️</span>Recently Deleted</button>
+
+    <div class="section-label">Settings</div>
+    <label class="setting-row" for="showLaBreedingToggle">
+      <span>Show LA breeding activity<span class="setting-sub">In the Activity report and its count. Off hides cows owned by LA.</span></span>
+      <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
+    </label>
 
     <div class="section-label">Help</div>
     <button class="btn btn-outline btn-full" id="textListEntryBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">✉️</span>&nbsp;&nbsp;Text a List</button>
@@ -2475,6 +2490,45 @@
       }
     }catch(e){ /* no signal: keep what is saved on this phone */ }
   }
+  // ===== App settings (added Nov 11): shared by every device, saved in the app_settings table =====
+  // Setting "show_la_breeding_activity": off (default) hides breeding entries for cows owned by LA
+  // from Today's Activity and the Activity count. Nothing is deleted.
+  const APP_SETTINGS_KEY = 'champ_app_settings_v1';
+  let showLaBreeding = false;
+  try{ showLaBreeding = (JSON.parse(localStorage.getItem(APP_SETTINGS_KEY) || '{}').show_la_breeding_activity === 'true'); }catch(e){ showLaBreeding = false; }
+  function syncLaToggle(){ const t = document.getElementById('showLaBreedingToggle'); if(t) t.checked = showLaBreeding; }
+  function breedingHiddenFor(num){
+    if(showLaBreeding) return false;
+    const cow = cows.find(c=>c.number===num);
+    return !!(cow && cow.owner === 'LA');
+  }
+  async function loadAppSettings(){
+    try{
+      const rows = await api('/app_settings?select=*', { method:'GET' });
+      if(Array.isArray(rows)){
+        const map = {};
+        rows.forEach(r=>{ map[r.key] = r.value; });
+        showLaBreeding = (map.show_la_breeding_activity === 'true');
+        try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
+        syncLaToggle();
+        if(typeof updateTodaysActivityBadge === 'function') updateTodaysActivityBadge();
+      }
+    }catch(e){ /* no signal: keep the last saved choice on this device */ }
+  }
+  async function saveLaBreedingSetting(on){
+    try{
+      await api('/app_settings', {
+        method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'resolution=merge-duplicates,return=representation'}),
+        body: JSON.stringify({ key:'show_la_breeding_activity', value: on ? 'true' : 'false', updated_at: new Date().toISOString() })
+      });
+      showLaBreeding = on;
+      try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify({ show_la_breeding_activity: on ? 'true' : 'false' })); }catch(e){}
+      updateTodaysActivityBadge();
+    }catch(e){
+      syncLaToggle();   // could not save: put the switch back the way it was
+      showToast('Could not save — try again');
+    }
+  }
   let isLoadingAll = false;
   async function loadAll(){
     if(isLoadingAll) return;
@@ -2482,6 +2536,7 @@
     try{
       await loadAllInner();
       loadHeatLog();
+      loadAppSettings();
     } finally {
       isLoadingAll = false;
     }
@@ -9504,6 +9559,8 @@
   document.getElementById('manageReasonsHomeBtn').addEventListener('click', showHome);
   document.getElementById('addReasonBtn').addEventListener('click', addReasonModal);
   document.getElementById('appInfoBtn').addEventListener('click', showAppInfo);
+  document.getElementById('showLaBreedingToggle').addEventListener('change', e=>{ saveLaBreedingSetting(e.target.checked); });
+  syncLaToggle();
   document.getElementById('appInfoHomeBtn').addEventListener('click', showHome);
   document.getElementById('textListEntryBtn').addEventListener('click', textCategoryPickerModal);
   document.getElementById('homeUtilitiesBtn').addEventListener('click', showUtilities);
@@ -16281,7 +16338,7 @@
         }
       });
       breedingRecords.forEach(b=>{
-        if(daysAgo(b.breed_date) <= days && daysAgo(b.breed_date) >= 0 && cowIsActive(b.cow_number)){
+        if(daysAgo(b.breed_date) <= days && daysAgo(b.breed_date) >= 0 && cowIsActive(b.cow_number) && !breedingHiddenFor(b.cow_number)){
           entries.push({ date: b.breed_date, num: b.cow_number, type: 'Breeding', details: b.bred_to ? 'Bred to: '+b.bred_to : '' });
         }
       });
@@ -16502,7 +16559,7 @@
     calvings.forEach(c=>{ if(daysAgo(c.calving_date) === 0) count++; });
     generalNotes.forEach(n=>{ if(daysAgo(n.note_date) === 0) count++; });
     weights.forEach(w=>{ if(daysAgo(w.weigh_date) === 0) count++; });
-    breedingRecords.forEach(b=>{ if(daysAgo(b.breed_date) === 0) count++; });
+    breedingRecords.forEach(b=>{ if(daysAgo(b.breed_date) === 0 && !breedingHiddenFor(b.cow_number)) count++; });
     calfTreatments.forEach(t=>{ if(daysAgo(t.date) === 0) count++; });
     calfWeights.forEach(w=>{ if(daysAgo(w.weigh_date) === 0) count++; });
     badge.textContent = count > 99 ? '99+' : count;

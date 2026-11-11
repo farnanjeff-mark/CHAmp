@@ -667,6 +667,7 @@
     <div class="section-label">Data</div>
     <button class="btn btn-nav-tool btn-full" id="exportEverythingBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📦</span>&nbsp;&nbsp;Export</button>
     <button class="btn btn-nav-tool btn-full" id="importDataBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📥</span>&nbsp;&nbsp;Import</button>
+    <button class="btn btn-nav-tool btn-full" id="settingsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">⚙️</span>&nbsp;&nbsp;Settings</button>
 
     <div class="section-label">Herd Tools</div>
     <button class="btn btn-nav-tool btn-full" id="vetPregCheckBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🩺</span>&nbsp;&nbsp;Vet Preg Check</button>
@@ -687,12 +688,6 @@
 
     <div class="section-label">Records</div>
     <button class="btn btn-outline btn-full" id="recentlyDeletedBtn" style="text-align:left;display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;margin-bottom:12px;"><span style="font-size:18px;">🗑️</span>Recently Deleted</button>
-
-    <div class="section-label">Settings</div>
-    <label class="setting-row" for="showLaBreedingToggle">
-      <span>Show LA breeding activity<span class="setting-sub">In the Activity report and its count. Off hides cows owned by LA.</span></span>
-      <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
-    </label>
 
     <div class="section-label">Help</div>
     <button class="btn btn-outline btn-full" id="textListEntryBtn" style="padding:11px 14px;font-size:14px;margin-bottom:8px;"><span style="font-size:18px;">✉️</span>&nbsp;&nbsp;Text a List</button>
@@ -2528,6 +2523,74 @@
       syncLaToggle();   // could not save: put the switch back the way it was
       showToast('Could not save — try again');
     }
+  }
+  // Settings screen (added Nov 11): opens from Utilities > Data > Settings, locked with the same password as the Vault.
+  // The password is checked the same way the Vault checks it (sign in to the Vault-only account) and is never stored.
+  async function checkVaultPassword(pw){
+    const enc = new TextEncoder();
+    const bk = await crypto.subtle.importKey('raw', enc.encode(pw.normalize('NFKC')), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt:enc.encode('champ-vault-login-v1'), iterations:250000 }, bk, 256);
+    let s = ''; new Uint8Array(bits).forEach(b=>{ s += String.fromCharCode(b); });
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method:'POST', headers:{ 'apikey':SUPABASE_KEY, 'Content-Type':'application/json' }, cache:'no-store',
+      body: JSON.stringify({ email:'farnan.jeff@gmail.com', password: btoa(s) })
+    });
+    let json = null; try{ json = await res.json(); }catch(e){}
+    if(res.ok && json && json.access_token){
+      // signed in only to prove the password; sign right back out
+      try{ fetch(SUPABASE_URL + '/auth/v1/logout', { method:'POST', headers:{ 'apikey':SUPABASE_KEY, 'Authorization':'Bearer ' + json.access_token, 'Content-Type':'application/json' }, body:'{}' }).catch(()=>{}); }catch(e){}
+      return 'ok';
+    }
+    return res.status === 429 ? 'toomany' : 'wrong';
+  }
+  function openSettingsModal(){
+    const modal = openModal(`
+      <div class="modal-title">Settings</div>
+      <div id="settingsLock">
+        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:12px;">Enter your Vault password to open Settings.</div>
+        <div class="field"><label>Password</label><input type="password" id="settingsPw" autocomplete="current-password"/></div>
+        <div id="settingsMsg" style="font-family:Arial,sans-serif;font-size:13px;color:#8B2A1E;min-height:18px;margin-bottom:8px;"></div>
+        <div class="modal-actions">
+          <button class="btn btn-nav-tool" id="settingsUnlockBtn" style="justify-content:center;">Unlock</button>
+          <button class="btn btn-barn" id="settingsCancelBtn">Cancel</button>
+        </div>
+      </div>
+      <div id="settingsBody" class="hidden">
+        <label class="setting-row" for="showLaBreedingToggle">
+          <span>Show LA breeding activity<span class="setting-sub">In the Activity report and its count. Off hides cows owned by LA.</span></span>
+          <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
+        </label>
+        <div class="modal-actions"><button class="btn btn-barn btn-full" id="settingsCloseBtn">Close</button></div>
+      </div>
+    `);
+    const pwEl = modal.querySelector('#settingsPw'), msgEl = modal.querySelector('#settingsMsg'), goBtn = modal.querySelector('#settingsUnlockBtn');
+    let working = false;
+    async function tryUnlock(){
+      if(working) return;
+      const pw = pwEl.value;
+      if(!pw){ msgEl.textContent = 'Enter your Vault password.'; return; }
+      working = true; goBtn.disabled = true; goBtn.textContent = 'Checking…'; msgEl.textContent = '';
+      let result = 'error';
+      try{ result = await checkVaultPassword(pw); }catch(e){ result = 'error'; }
+      working = false; goBtn.disabled = false; goBtn.textContent = 'Unlock';
+      if(result === 'ok'){
+        pwEl.value = '';
+        modal.querySelector('#settingsLock').classList.add('hidden');
+        modal.querySelector('#settingsBody').classList.remove('hidden');
+        syncLaToggle();
+        modal.querySelector('#showLaBreedingToggle').addEventListener('change', e=>{ saveLaBreedingSetting(e.target.checked); });
+      } else {
+        pwEl.value = '';
+        msgEl.textContent = result === 'toomany' ? 'Too many tries. Wait a few minutes and try again.'
+          : result === 'wrong' ? 'That password is not right.'
+          : 'Could not check the password. Check your signal and try again.';
+      }
+    }
+    goBtn.addEventListener('click', tryUnlock);
+    pwEl.addEventListener('keydown', e=>{ if(e.key === 'Enter') tryUnlock(); });
+    modal.querySelector('#settingsCancelBtn').addEventListener('click', closeModal);
+    modal.querySelector('#settingsCloseBtn').addEventListener('click', closeModal);
+    setTimeout(()=>{ try{ pwEl.focus(); }catch(e){} }, 50);
   }
   let isLoadingAll = false;
   async function loadAll(){
@@ -9559,8 +9622,7 @@
   document.getElementById('manageReasonsHomeBtn').addEventListener('click', showHome);
   document.getElementById('addReasonBtn').addEventListener('click', addReasonModal);
   document.getElementById('appInfoBtn').addEventListener('click', showAppInfo);
-  document.getElementById('showLaBreedingToggle').addEventListener('change', e=>{ saveLaBreedingSetting(e.target.checked); });
-  syncLaToggle();
+  document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
   document.getElementById('appInfoHomeBtn').addEventListener('click', showHome);
   document.getElementById('textListEntryBtn').addEventListener('click', textCategoryPickerModal);
   document.getElementById('homeUtilitiesBtn').addEventListener('click', showUtilities);

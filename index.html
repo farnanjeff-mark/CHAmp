@@ -2281,7 +2281,8 @@
     lot:         { flag: '_pendingLotSync',    attr: 'data-pending-lot-num' },
     owner:       { flag: '_pendingOwnerSync',  attr: 'data-pending-owner-num' },
     cow_group:   { flag: '_pendingGroupSync',  attr: 'data-pending-group-num' },
-    herd_season: { flag: '_pendingSeasonSync', attr: 'data-pending-season-num' }
+    herd_season: { flag: '_pendingSeasonSync', attr: 'data-pending-season-num' },
+    epd_url:     { flag: '_pendingEpdSync',    attr: 'data-pending-epd-num' }
   };
 
   let isSyncingPendingWrites = false;
@@ -6738,9 +6739,9 @@
     if(!rowsEl || !badge) return;
     const cow = cows.find(c=> c.number === currentProfileCow);
     if(!cow){ rowsEl.innerHTML = ''; return; }
-    const rows = [['Location', cow.lot, 'lot'], ['Owner', cow.owner, 'owner'], ['Group', cow.cow_group, 'group'], ['Herd Season', cow.herd_season, 'season']];
+    const rows = [['Location', cow.lot, 'lot'], ['Owner', cow.owner, 'owner'], ['Group', cow.cow_group, 'group'], ['Herd Season', cow.herd_season, 'season'], ['EPD Link', cow.epd_url, 'epd']];
     rowsEl.innerHTML = rows.map(([lbl, val, key], i)=>
-      `<div class="profile-info-row" data-edit="${key}" role="button" style="display:flex;align-items:center;padding:11px 0;cursor:pointer;${i < rows.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,.28);' : ''}"><div style="font-family:Arial,sans-serif;width:118px;flex-shrink:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:700;">${lbl}</div><div style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#fff;min-width:0;flex:1;overflow-wrap:anywhere;">${val ? escapeHtml(val) : 'Not set'}</div><div class="profile-chev" style="font-family:Arial,sans-serif;font-size:24px;line-height:1;color:rgba(255,255,255,.85);padding-left:10px;">&rsaquo;</div></div>`
+      `<div class="profile-info-row" data-edit="${key}" role="button" style="display:flex;align-items:center;padding:11px 0;cursor:pointer;${i < rows.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,.28);' : ''}"><div style="font-family:Arial,sans-serif;width:118px;flex-shrink:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:700;">${lbl}</div><div style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#fff;min-width:0;flex:1;overflow-wrap:anywhere;">${key === 'epd' ? (val ? '<button type="button" data-open-epd="1" style="background:#3C9142;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:6px 14px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">Open Page</button>' : 'Not set') : (val ? escapeHtml(val) : 'Not set')}</div><div class="profile-chev" style="font-family:Arial,sans-serif;font-size:24px;line-height:1;color:rgba(255,255,255,.85);padding-left:10px;">&rsaquo;</div></div>`
     ).join('');
     const status = cow.status || 'Active';
     const colors = ({ Active:['#3C9142','#fff'], Sold:['#E3A93C','#2B2620'], Deceased:['#5C3A21','#fff'] })[status] || ['#6b6350','#fff'];
@@ -9783,9 +9784,16 @@
   document.getElementById('profilePrintBtn').addEventListener('click', ()=> window.print());
   // touch the Location / Owner / Group / Herd Season line, or the status badge, to change it
   document.getElementById('profileBanner').addEventListener('click', e=>{
+    if(e.target.closest('[data-open-epd]')){
+      e.stopPropagation();
+      const c = cows.find(x=> x.number === currentProfileCow);
+      const u = c && c.epd_url;
+      if(u && /^https?:\/\//i.test(u)) window.open(u, '_blank', 'noopener');
+      return;
+    }
     const el = e.target.closest('[data-edit]');
     if(!el || !currentProfileCow) return;
-    const open = { lot: editLotModal, owner: editOwnerModal, group: editGroupModal, season: editHerdSeasonModal, status: editStatusModal }[el.dataset.edit];
+    const open = { lot: editLotModal, owner: editOwnerModal, group: editGroupModal, season: editHerdSeasonModal, status: editStatusModal, epd: editEpdModal }[el.dataset.edit];
     if(open) open();
   });
   // Whenever a pop-up closes while a cow's profile is showing, redraw the profile so new
@@ -10833,6 +10841,71 @@
   }
 
   const HERD_SEASON_OPTIONS = ['Spring', 'Fall'];
+  // EPD Link (added Nov 13): a web address saved on the cow; the profile shows an "Open Page" button for it.
+  async function saveEpdUrl(num, url){
+    const body = { epd_url: url };
+    try{
+      const updated = await api('/cows?number=eq.' + encodeURIComponent(num), {
+        method:'PATCH',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify(body)
+      });
+      const idx = cows.findIndex(c=>c.number===num);
+      if(idx !== -1 && updated && updated[0]) cows[idx] = updated[0];
+      saveOfflineCache();
+      return true;
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        const idx = cows.findIndex(c=>c.number===num);
+        if(idx !== -1) cows[idx] = Object.assign({}, cows[idx], body, { _pendingEpdSync: true });
+        queuePendingWrite({
+          localId: makeLocalId('pw'),
+          kind: 'update', table: 'cows', field: 'epd_url', cowNumber: num,
+          method: 'PATCH', path: '/cows?number=eq.' + encodeURIComponent(num),
+          body
+        });
+        saveOfflineCache();
+        showToast('Saved on this phone — will sync when you have signal');
+        return true;
+      }
+      return false;
+    }
+  }
+  function editEpdModal(){
+    const targetNum = getActiveCowNumber();
+    const cow = cows.find(c=>c.number===targetNum);
+    const current = (cow && cow.epd_url) || '';
+    const modal = openModal(`
+      <div class="modal-title">EPD Link — #${escapeHtml(targetNum)}</div>
+      <div class="field">
+        <label>Web address</label>
+        <input type="text" id="editEpdInput" placeholder="Paste the link here" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="${escapeHtml(current)}"/>
+      </div>
+      <div id="editEpdMsg" style="font-family:Arial,sans-serif;font-size:13px;color:#8B2A1E;min-height:18px;margin-bottom:8px;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="cancelEditEpd">Cancel</button>
+        ${current ? '<button class="btn btn-outline" id="clearEditEpd">Remove</button>' : ''}
+        <button class="btn btn-barn" id="confirmEditEpd">Save</button>
+      </div>
+    `);
+    const input = modal.querySelector('#editEpdInput'), msg = modal.querySelector('#editEpdMsg');
+    async function commit(val){
+      const btns = modal.querySelectorAll('button'); btns.forEach(b=> b.disabled = true);
+      const ok = await saveEpdUrl(targetNum, val);
+      if(ok){ closeModal(); refreshOpenCowHeaders(); renderProfileList(); showToast(val ? 'EPD link saved' : 'EPD link removed'); }
+      else { btns.forEach(b=> b.disabled = false); showToast('Could not save — try again'); }
+    }
+    modal.querySelector('#cancelEditEpd').addEventListener('click', closeModal);
+    const clr = modal.querySelector('#clearEditEpd'); if(clr) clr.addEventListener('click', ()=> commit(null));
+    modal.querySelector('#confirmEditEpd').addEventListener('click', ()=>{
+      let v = input.value.trim();
+      if(!v){ commit(null); return; }
+      if(!/^[a-z][a-z0-9+.-]*:/i.test(v)) v = 'https://' + v;
+      if(!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(v)){ msg.textContent = 'That does not look like a web address.'; return; }
+      commit(v);
+    });
+  }
+
   function editHerdSeasonModal(){
     const targetNum = getActiveCowNumber();
     const cow = cows.find(c=>c.number===targetNum);

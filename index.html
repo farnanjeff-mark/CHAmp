@@ -10418,10 +10418,8 @@
     const lines = [];
     const cow = cows.find(c=>c.number===num);
     if(cow){
-      const locParts = [];
-      if(cow.lot && cow.lot !== 'None') locParts.push(cow.lot);
-      if(cow.cow_group && cow.cow_group !== 'None') locParts.push(cow.cow_group);
-      if(locParts.length) lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(locParts.join(' · '))}`);
+      if(cow.lot && cow.lot !== 'None') lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(cow.lot)}`);
+      if(cow.cow_group && cow.cow_group !== 'None') lines.push(`<span style="color:#8a8163;">Group:</span> ${escapeHtml(cow.cow_group)}`);
       if(cow.herd_season) lines.push(`<span style="color:#8a8163;">Season:</span> ${escapeHtml(cow.herd_season)}`);
     }
     const latestMed = [...recordsFor(num)].sort((a,b)=>b.date.localeCompare(a.date))[0];

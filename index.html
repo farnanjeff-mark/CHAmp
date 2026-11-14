@@ -677,7 +677,7 @@
 
     <div class="section-label">Reference Lists</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-      <button class="btn" id="manageBullsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐂</span>Bulls</button>
+      <button class="btn" id="manageBullsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐂</span>Breed Lists</button>
       <button class="btn" id="manageHayingFieldsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🌾</span>Haying Fields</button>
       <button class="btn" id="manageMedsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">💊</span>Meds</button>
       <button class="btn" id="manageLocationsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📍</span>Locations</button>
@@ -811,11 +811,10 @@
 
   <div class="view hidden" id="manageBullsView">
     <button class="btn btn-outline btn-full" id="manageBullsHomeBtn" style="margin-bottom:16px;">🏠 Home</button>
-    <div class="modal-title" style="margin-bottom:6px;">Manage Bulls</div>
-    <div class="banner banner-note" style="display:block;margin-bottom:14px;">Removing a bull only takes it off the dropdown going forward — any calving or breeding record that already used the name keeps showing it.</div>
-    <button class="btn btn-nav-tool btn-full" id="addBullBtn" style="margin-bottom:14px;">+ Add Bull</button>
+    <div class="modal-title" style="margin-bottom:6px;">Manage Breed Lists</div>
+    <div class="banner banner-note" style="display:block;margin-bottom:14px;">Tap + Add on a blue box to add a name to that list. Removing a name only takes it off the list going forward — any calving or breeding record that already used it keeps showing it.</div>
     <div id="manageBullsList"></div>
-    <div id="manageBullsEmptyState" class="empty hidden">No bulls in the list yet.</div>
+    <div id="manageBullsEmptyState" class="empty hidden">No names in the lists yet.</div>
   </div>
 
   <div class="view hidden" id="manageHayingFieldsView">
@@ -8494,17 +8493,19 @@
   function addWeightModal(){ weightModal(null); }
   function editWeightModal(record){ weightModal(record); }
 
+  const BULL_CATEGORIES = ['Sires','Embryos','Herd bulls'];
+  function bullCategoryOf(b){ return BULL_CATEGORIES.includes(b.category) ? b.category : 'Sires'; }
   function getBullOptionsWithExtras(){
     return bulls.map(b=>b.name);
   }
-  async function addBullIfNew(name){
+  async function addBullIfNew(name, category){
     if(!name) return;
     if(bulls.some(b=>b.name===name)) return;
     try{
       const inserted = await api('/bulls', {
         method:'POST',
         headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, category: BULL_CATEGORIES.includes(category) ? category : 'Sires' })
       });
       bulls.push(inserted[0]);
       bulls.sort((a,b)=>a.name.localeCompare(b.name));
@@ -8512,34 +8513,118 @@
       console.error('Could not save new bull name', e);
     }
   }
+
+  // "Bred To" picker used in Log Breeding: three blue boxes (Sires, Embryos, Herd bulls). Tap one and its list drops down.
+  function breedPickerHtml(id, label){
+    return `
+      <div class="field">
+        <label>${label}</label>
+        <div id="${id}Chosen" style="font-family:Arial,sans-serif;font-size:15px;color:#6b6350;margin-bottom:8px;"></div>
+        <div id="${id}Groups"></div>
+      </div>
+    `;
+  }
+  function wireBreedPicker(modal, id, initialValue){
+    const chosenEl = modal.querySelector('#'+id+'Chosen');
+    const groupsEl = modal.querySelector('#'+id+'Groups');
+    const state = { value: initialValue || '', category: '', openCat: null, typing: false };
+    const startBull = initialValue ? bulls.find(b=>b.name===initialValue) : null;
+    if(startBull) state.category = bullCategoryOf(startBull);
+    function paintChosen(){
+      if(state.value){
+        chosenEl.innerHTML = `<span style="color:#2B2620;font-weight:700;">${escapeHtml(state.value)}</span>` +
+          (state.category ? ` <span style="color:#6b6350;">(${escapeHtml(state.category)})</span>` : '') +
+          ` <button type="button" class="pickerClear" style="background:none;border:none;color:#0C5A8E;font-size:13px;text-decoration:underline;cursor:pointer;padding:4px 8px;">Clear</button>`;
+        chosenEl.querySelector('.pickerClear').addEventListener('click', ()=>{
+          state.value = ''; state.category = ''; state.typing = false; paintChosen(); paintGroups();
+        });
+      } else {
+        chosenEl.textContent = 'Tap a blue box, then pick a name';
+      }
+    }
+    function paintGroups(){
+      groupsEl.innerHTML = BULL_CATEGORIES.map(cat=>{
+        const isOpen = state.openCat === cat;
+        let list = '';
+        if(isOpen){
+          const names = bulls.filter(b=>bullCategoryOf(b)===cat).map(b=>b.name).sort((a,b)=>a.localeCompare(b));
+          const rows = names.map(n=>`<div class="pickerRow" data-name="${escapeHtml(n)}" style="padding:12px 14px;font-family:Arial,sans-serif;font-size:15px;border-bottom:1px solid #e3dccb;cursor:pointer;${state.value===n ? 'background:#E6F1FB;font-weight:700;' : ''}">${escapeHtml(n)}</div>`).join('');
+          const empty = names.length ? '' : `<div style="padding:12px 14px;font-family:Arial,sans-serif;font-size:14px;color:#6b6350;border-bottom:1px solid #e3dccb;">No names yet. Add them in Utilities, or type one below.</div>`;
+          const other = `<div class="pickerOther" style="padding:12px 14px;font-family:Arial,sans-serif;font-size:15px;color:#0C5A8E;cursor:pointer;">Other (type it in)</div>`;
+          const typeBox = state.typing ? `<div style="padding:0 14px 12px;"><input type="text" class="pickerTyped" placeholder="Type name or ID" value="${escapeHtml(state.value && !names.includes(state.value) ? state.value : '')}"/></div>` : '';
+          list = `<div style="background:#fff;border:1.5px solid #2E88C4;border-radius:10px;margin:0 0 10px;overflow:hidden;">${rows}${empty}${other}${typeBox}</div>`;
+        }
+        return `<button type="button" class="btn btn-nav-tool btn-full pickerBox" data-cat="${cat}" style="margin-bottom:8px;justify-content:space-between;"><span>${cat}</span><span aria-hidden="true">${isOpen ? '&#9650;' : '&#9660;'}</span></button>${list}`;
+      }).join('');
+      groupsEl.querySelectorAll('.pickerBox').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          state.openCat = (state.openCat === btn.dataset.cat) ? null : btn.dataset.cat;
+          state.typing = false;
+          paintGroups();
+        });
+      });
+      groupsEl.querySelectorAll('.pickerRow').forEach(row=>{
+        row.addEventListener('click', ()=>{
+          state.value = row.dataset.name; state.category = state.openCat; state.openCat = null; state.typing = false;
+          paintChosen(); paintGroups();
+        });
+      });
+      const other = groupsEl.querySelector('.pickerOther');
+      if(other) other.addEventListener('click', ()=>{
+        state.typing = true; paintGroups();
+        const t = groupsEl.querySelector('.pickerTyped'); if(t) t.focus();
+      });
+      const typed = groupsEl.querySelector('.pickerTyped');
+      if(typed) typed.addEventListener('input', ()=>{
+        state.value = typed.value.trim(); state.category = state.openCat || '';
+        paintChosen();
+      });
+    }
+    paintChosen();
+    paintGroups();
+    return { getValue: ()=> (state.value||'').trim(), getCategory: ()=> state.category || state.openCat || 'Sires' };
+  }
+
   function renderBullsList(){
     const listEl = document.getElementById('manageBullsList');
     const emptyEl = document.getElementById('manageBullsEmptyState');
     if(!listEl) return;
-    const sorted = [...bulls].sort((a,b)=>a.name.localeCompare(b.name));
-    emptyEl.classList.toggle('hidden', sorted.length !== 0);
-    listEl.innerHTML = sorted.map(b=>`
-      <div class="cow-card" style="cursor:default;">
-        <div><div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}${b.code ? ` <span style="font-size:14px;color:#6b6350;font-weight:400;">— ${escapeHtml(b.code)}</span>` : ''}</div></div>
-        <div style="display:flex;align-items:center;">
-          <button class="edit-bull-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" data-code="${escapeHtml(b.code||'')}" title="Edit code" style="background:none;border:none;color:#a08f6b;font-size:20px;cursor:pointer;padding:4px 8px;">&#9998;</button>
-          <button class="remove-bull-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" title="Remove bull" style="background:none;border:none;color:#a08f6b;font-size:22px;cursor:pointer;padding:4px 8px;">&times;</button>
+    if(emptyEl) emptyEl.classList.add('hidden');
+    listEl.innerHTML = BULL_CATEGORIES.map(cat=>{
+      const items = bulls.filter(b=>bullCategoryOf(b)===cat).sort((a,b)=>a.name.localeCompare(b.name));
+      const cards = items.length ? items.map(b=>`
+        <div class="cow-card" style="cursor:default;">
+          <div><div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}${b.code ? ` <span style="font-size:14px;color:#6b6350;font-weight:400;">— ${escapeHtml(b.code)}</span>` : ''}</div></div>
+          <div style="display:flex;align-items:center;">
+            <button class="edit-bull-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" data-code="${escapeHtml(b.code||'')}" data-cat="${escapeHtml(bullCategoryOf(b))}" title="Edit" style="background:none;border:none;color:#a08f6b;font-size:20px;cursor:pointer;padding:4px 8px;">&#9998;</button>
+            <button class="remove-bull-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" title="Remove" style="background:none;border:none;color:#a08f6b;font-size:22px;cursor:pointer;padding:4px 8px;">&times;</button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `).join('') : `<div class="empty" style="margin-bottom:14px;">No ${cat.toLowerCase()} yet.</div>`;
+      return `<button class="btn btn-nav-tool btn-full add-bull-btn" data-cat="${cat}" style="margin-bottom:8px;justify-content:space-between;"><span>${cat}</span><span>+ Add</span></button>${cards}<div style="height:12px;"></div>`;
+    }).join('');
+    listEl.querySelectorAll('.add-bull-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> addBullModal(btn.dataset.cat));
+    });
     listEl.querySelectorAll('.remove-bull-btn').forEach(btn=>{
       btn.addEventListener('click', ()=> removeBull(btn.dataset.id, btn.dataset.name));
     });
     listEl.querySelectorAll('.edit-bull-btn').forEach(btn=>{
-      btn.addEventListener('click', ()=> editBullCodeModal(btn.dataset.id, btn.dataset.name, btn.dataset.code));
+      btn.addEventListener('click', ()=> editBullCodeModal(btn.dataset.id, btn.dataset.name, btn.dataset.code, btn.dataset.cat));
     });
   }
-  function editBullCodeModal(id, name, currentCode){
+  function editBullCodeModal(id, name, currentCode, currentCat){
     const modal = openModal(`
       <div class="modal-title">${escapeHtml(name)}</div>
       <div class="field">
         <label>Code</label>
         <input type="text" id="editBullCodeInput" placeholder="e.g. registration or tag number" value="${escapeHtml(currentCode||'')}" autofocus/>
+      </div>
+      <div class="field">
+        <label>List</label>
+        <select id="editBullCatSelect">
+          ${BULL_CATEGORIES.map(c=>`<option value="${escapeHtml(c)}" ${c===currentCat ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="cancelEditBullCode">Cancel</button>
@@ -8549,54 +8634,57 @@
     modal.querySelector('#cancelEditBullCode').addEventListener('click', closeModal);
     modal.querySelector('#confirmEditBullCode').addEventListener('click', async ()=>{
       const code = modal.querySelector('#editBullCodeInput').value.trim();
+      const category = modal.querySelector('#editBullCatSelect').value;
       const btn = modal.querySelector('#confirmEditBullCode');
       btn.disabled = true;
       try{
         const updated = await api('/bulls?id=eq.' + encodeURIComponent(id), {
           method:'PATCH',
           headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
-          body: JSON.stringify({ code: code||null })
+          body: JSON.stringify({ code: code||null, category })
         });
         const idx = bulls.findIndex(b=>b.id===id);
         if(idx !== -1) bulls[idx] = updated[0];
         closeModal();
         renderBullsList();
-        showToast('Code saved');
+        showToast('Saved');
       }catch(e){
         btn.disabled = false;
         showToast('Could not save — try again');
       }
     });
   }
-  function addBullModal(){
+  function addBullModal(category){
+    const cat = BULL_CATEGORIES.includes(category) ? category : 'Sires';
+    const singular = cat === 'Sires' ? 'Sire' : (cat === 'Embryos' ? 'Embryo' : 'Herd Bull');
     const modal = openModal(`
-      <div class="modal-title">Add Bull</div>
+      <div class="modal-title">Add ${singular}</div>
       <div class="field">
-        <label>Bull Name</label>
-        <input type="text" id="newBullName" placeholder="e.g. Alpha" autofocus/>
+        <label>${singular} Name</label>
+        <input type="text" id="newBullName" placeholder="Type name or ID" autofocus/>
       </div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="cancelAddBull">Cancel</button>
-        <button class="btn btn-barn" id="confirmAddBull">Add Bull</button>
+        <button class="btn btn-barn" id="confirmAddBull">Add ${singular}</button>
       </div>
     `);
     modal.querySelector('#cancelAddBull').addEventListener('click', closeModal);
     modal.querySelector('#confirmAddBull').addEventListener('click', async ()=>{
       const name = modal.querySelector('#newBullName').value.trim();
-      if(!name){ showToast('Enter a bull name'); return; }
-      if(bulls.some(b=>b.name.toLowerCase()===name.toLowerCase())){ showToast('That bull is already in the list'); return; }
+      if(!name){ showToast('Enter a name'); return; }
+      if(bulls.some(b=>b.name.toLowerCase()===name.toLowerCase())){ showToast('That name is already in a list'); return; }
       const btn = modal.querySelector('#confirmAddBull');
       btn.disabled = true;
       try{
         const inserted = await api('/bulls', {
           method:'POST',
           headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
-          body: JSON.stringify({ name })
+          body: JSON.stringify({ name, category: cat })
         });
         bulls.push(inserted[0]);
         closeModal();
         renderBullsList();
-        showToast('Bull added');
+        showToast(singular + ' added');
       }catch(e){
         btn.disabled = false;
         showToast('Could not add — try again');
@@ -8604,12 +8692,12 @@
     });
   }
   async function removeBull(id, name){
-    if(!confirm(`Remove "${name}" from the bull list? Past records that used this name are unaffected.`)) return;
+    if(!confirm(`Remove "${name}" from the list? Past records that used this name are unaffected.`)) return;
     try{
       await api('/bulls?id=eq.' + encodeURIComponent(id), { method:'DELETE' });
       bulls = bulls.filter(b=>b.id!==id);
       renderBullsList();
-      showToast('Bull removed');
+      showToast('Removed');
     }catch(e){
       showToast('Could not remove — try again');
     }
@@ -9009,7 +9097,7 @@
         <label>Date</label>
         <input type="date" id="brdDate" value="${initialDate}"/>
       </div>
-      ${fieldWithOther('brdBredTo', 'Bred To', getBullOptionsWithExtras(), 'Type bull name or ID')}
+      ${breedPickerHtml('brdBredTo', 'Bred To')}
       <div class="field">
         <label>Pregnancy Method</label>
         <select id="brdMethod">
@@ -9074,12 +9162,11 @@
     modal.querySelector('#brdMethod').addEventListener('change', refreshDueDateDisplay);
     modal.querySelector('#brdIsOpen').addEventListener('change', refreshOpenToggle);
     refreshOpenToggle();
-    wireFieldWithOther(modal, 'brdBredTo');
-    if(isEdit && existingRecord.bred_to) prefillFieldWithOther(modal, 'brdBredTo', existingRecord.bred_to, getBullOptionsWithExtras());
+    const brdPicker = wireBreedPicker(modal, 'brdBredTo', isEdit ? (existingRecord.bred_to||'') : '');
     modal.querySelector('#cancelBrd').addEventListener('click', closeModal);
     modal.querySelector('#confirmBrd').addEventListener('click', async ()=>{
       const dateVal = modal.querySelector('#brdDate').value;
-      const bredTo = valueOf(modal, 'brdBredTo');
+      const bredTo = brdPicker.getValue();
       const method = modal.querySelector('#brdMethod').value;
       const sire = modal.querySelector('#brdSire').value.trim();
       const isOpen = modal.querySelector('#brdIsOpen').checked;
@@ -9092,7 +9179,7 @@
       if(!isOpen && vetDate && vetDate < dateVal){ showToast('Vet call date can\'t be before the breeding date'); return; }
       const btn = modal.querySelector('#confirmBrd');
       btn.disabled = true;
-      await addBullIfNew(bredTo);
+      await addBullIfNew(bredTo, brdPicker.getCategory());
       let body;
       if(isOpen){
         body = {
@@ -9604,7 +9691,6 @@
   });
   document.getElementById('manageBullsBtn').addEventListener('click', showManageBulls);
   document.getElementById('manageBullsHomeBtn').addEventListener('click', showHome);
-  document.getElementById('addBullBtn').addEventListener('click', addBullModal);
   document.getElementById('manageHayingFieldsBtn').addEventListener('click', showManageHayingFields);
   document.getElementById('manageHayingFieldsHomeBtn').addEventListener('click', showHome);
   document.getElementById('addHayingFieldBtn').addEventListener('click', addHayingFieldModal);

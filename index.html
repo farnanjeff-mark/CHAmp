@@ -10053,7 +10053,7 @@
   }
   function regBtnHtml(cow){
     if(!cow.reg_number) return '';
-    return `<button type="button" data-open-reg="${escapeHtml(cow.reg_number)}" style="margin-left:10px;vertical-align:3px;background:#3C9142;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-family:Arial,sans-serif;font-size:12px;font-weight:700;cursor:pointer;">${escapeHtml(cow.reg_number)}</button>`;
+    return `<button type="button" data-open-reg="${escapeHtml(cow.reg_number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">${escapeHtml(cow.reg_number)}</button>`;
   }
   function statusBadgeHtml(cow){
     if(!cow.status || cow.status === 'Active') return '';
@@ -10599,9 +10599,12 @@
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
         <div style="background:#fff;padding:16px 18px;cursor:pointer;border-bottom:1px solid #eee;" data-open-num="${escapeHtml(cow.number)}">
           <div>
-            <div style="min-width:0;">
-              <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}${regBtnHtml(cow)}</span>
-              <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+              <div style="min-width:0;">
+                <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
+                <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
+              </div>
+              ${regBtnHtml(cow)}
             </div>
             <div style="display:flex;margin-top:12px;">
               <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">

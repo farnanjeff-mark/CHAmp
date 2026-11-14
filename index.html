@@ -10055,6 +10055,55 @@
     if(!cow.reg_number) return '';
     return `<button type="button" data-open-reg="${escapeHtml(cow.reg_number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">${escapeHtml(cow.reg_number)}</button>`;
   }
+  // EPD button: sits beside the green registration button on the cow card and opens a popup with all of the cow's EPDs and $ values.
+  const EPD_ORDER = ['CED','BW','WW','YW','RADG','DMI','YH','SC','Doc','Claw','Angle','PAP','HS','HP','CEM','Milk','Teat','UDDR','FL','MW','MH','$EN','CW','Marb','RE','Fat','$M','$W','$F','$G','$B','$C'];
+  const EPD_NAMES = {CED:'Calving ease direct',BW:'Birth weight',WW:'Weaning weight',YW:'Yearling weight',RADG:'Residual avg daily gain',DMI:'Dry matter intake',YH:'Yearling height',SC:'Scrotal circumference',Doc:'Docility',Claw:'Claw set',Angle:'Foot angle',PAP:'Pulmonary arterial pressure',HS:'Hair shed',HP:'Heifer pregnancy',CEM:'Calving ease maternal',Milk:'Milk',Teat:'Teat size',UDDR:'Udder suspension',MW:'Mature weight',MH:'Mature height','$EN':'Energy value',CW:'Carcass weight',Marb:'Marbling',RE:'Ribeye area',Fat:'Fat thickness','$M':'Maternal',"$W":'Weaned calf','$F':'Feedlot','$G':'Grid','$B':'Beef','$C':'Combined'};
+  const EPD_GROUPS = [
+    ['Growth and calving', ['CED','BW','WW','YW','RADG','DMI','YH','SC'], false],
+    ['Maternal', ['HP','CEM','Milk','MW','MH'], false],
+    ['Structure and health', ['Doc','Claw','Angle','PAP','HS','Teat','UDDR','FL'], false],
+    ['Carcass', ['CW','Marb','RE','Fat'], false],
+    ['$ values', ['$M','$W','$F','$G','$B','$C','$EN'], true]
+  ];
+  function epdBtnHtml(cow){
+    if(!cow.epd) return '';
+    return `<button type="button" data-open-epd="${escapeHtml(cow.number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">EPD</button>`;
+  }
+  function openEpdModal(num){
+    const cow = cows.find(c=>c.number===num);
+    if(!cow || !cow.epd) return;
+    const val = {};
+    EPD_ORDER.forEach((k,i)=>{ if(cow.epd[i] !== null && cow.epd[i] !== undefined) val[k] = cow.epd[i]; });
+    const fmt = (k,v)=>{
+      if(k.charAt(0) === '$') return String(v);
+      return (v > 0 ? '+' : '') + v;
+    };
+    const tile = (k, money)=>{
+      if(val[k] === undefined) return '';
+      const bg = money ? '#EAF3DE' : '#E6F1FB', lab = money ? '#27500A' : '#1F4E8C', num = money ? '#173404' : '#0C447C';
+      return `<div style="background:${bg};border-radius:8px;padding:8px 4px;text-align:center;"><div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:${lab};">${escapeHtml(k)}</div><div style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;color:${num};">${escapeHtml(fmt(k, val[k]))}</div>${EPD_NAMES[k] ? `<div style="font-family:Arial,sans-serif;font-size:10px;color:${lab};line-height:1.2;">${escapeHtml(EPD_NAMES[k])}</div>` : ''}</div>`;
+    };
+    const sections = EPD_GROUPS.map(g=>{
+      const tiles = g[1].map(k=>tile(k, g[2])).join('');
+      if(!tiles) return '';
+      return `<div style="font-family:Arial,sans-serif;font-size:15px;font-weight:700;color:#1F4E8C;margin:14px 0 6px;">${escapeHtml(g[0])}</div><div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">${tiles}</div>`;
+    }).join('');
+    let dateLine = '';
+    if(cow.epd_updated){
+      const d = new Date(cow.epd_updated + 'T12:00:00');
+      dateLine = 'Loaded from Angus file, ' + d.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+    }
+    const modal = openModal(`
+      <div class="modal-title">EPDs — #${escapeHtml(cow.number)}</div>
+      ${cow.reg_number ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">Reg # ${escapeHtml(cow.reg_number)}</div>` : ''}
+      ${sections}
+      ${dateLine ? `<div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-top:12px;">${escapeHtml(dateLine)}</div>` : ''}
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="btn btn-outline" id="closeEpdModal">Close</button>
+      </div>
+    `);
+    modal.querySelector('#closeEpdModal').addEventListener('click', closeModal);
+  }
   function statusBadgeHtml(cow){
     if(!cow.status || cow.status === 'Active') return '';
     return `<span class="status-badge">${escapeHtml(cow.status)}${cow._pendingStatusSync ? ' <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#E24B4A;vertical-align:2px;"></span>' : ''}</span>`;
@@ -10604,7 +10653,7 @@
                 <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
                 <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
               </div>
-              ${regBtnHtml(cow)}
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${epdBtnHtml(cow)}${regBtnHtml(cow)}</div>
             </div>
             <div style="display:flex;margin-top:12px;">
               <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
@@ -10649,6 +10698,8 @@
     container.querySelectorAll('[data-open-num]').forEach(el=>{
       el.addEventListener('click', e=>{
         e.stopPropagation();
+        const epdBtn = e.target.closest('[data-open-epd]');
+        if(epdBtn){ openEpdModal(epdBtn.dataset.openEpd); return; }
         const regBtn = e.target.closest('[data-open-reg]');
         if(regBtn){ openRegPage(regBtn.dataset.openReg); return; }
         closeModal();
@@ -15397,6 +15448,8 @@
     box.querySelectorAll('[data-open-num]').forEach(el=>{
       el.addEventListener('click', e=>{
         e.stopPropagation();
+        const epdBtn = e.target.closest('[data-open-epd]');
+        if(epdBtn){ openEpdModal(epdBtn.dataset.openEpd); return; }
         const regBtn = e.target.closest('[data-open-reg]');
         if(regBtn){ openRegPage(regBtn.dataset.openReg); return; }
         goProfile();

@@ -6740,7 +6740,7 @@
     if(!cow){ rowsEl.innerHTML = ''; return; }
     const rows = [['Location', cow.lot, 'lot'], ['Owner', cow.owner, 'owner'], ['Group', cow.cow_group, 'group'], ['Herd Season', cow.herd_season, 'season'], ['Reg #', cow.reg_number, 'reg']];
     rowsEl.innerHTML = rows.map(([lbl, val, key], i)=>
-      `<div class="profile-info-row" data-edit="${key}" role="button" style="display:flex;align-items:center;padding:11px 0;cursor:pointer;${i < rows.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,.28);' : ''}"><div style="font-family:Arial,sans-serif;width:118px;flex-shrink:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:700;">${lbl}</div><div style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#fff;min-width:0;flex:1;overflow-wrap:anywhere;">${key === 'reg' ? (val ? '<button type="button" data-open-reg="' + escapeHtml(val) + '" style="background:#3C9142;color:#fff;border:1.5px solid #fff;border-radius:8px;padding:6px 14px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;cursor:pointer;">' + escapeHtml(val) + '</button>' : 'Not set') : (val ? escapeHtml(val) : 'Not set')}</div><div class="profile-chev" style="font-family:Arial,sans-serif;font-size:24px;line-height:1;color:rgba(255,255,255,.85);padding-left:10px;">&rsaquo;</div></div>`
+      `<div class="profile-info-row" data-edit="${key}" role="button" style="display:flex;align-items:center;padding:11px 0;cursor:pointer;${i < rows.length - 1 ? 'border-bottom:1px solid rgba(255,255,255,.28);' : ''}"><div style="font-family:Arial,sans-serif;width:118px;flex-shrink:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.82);font-weight:700;">${lbl}</div><div style="font-family:Arial,sans-serif;font-size:16px;font-weight:700;color:#fff;min-width:0;flex:1;overflow-wrap:anywhere;">${val ? escapeHtml(val) : 'Not set'}</div><div class="profile-chev" style="font-family:Arial,sans-serif;font-size:24px;line-height:1;color:rgba(255,255,255,.85);padding-left:10px;">&rsaquo;</div></div>`
     ).join('');
     const status = cow.status || 'Active';
     const colors = ({ Active:['#3C9142','#fff'], Sold:['#E3A93C','#2B2620'], Deceased:['#5C3A21','#fff'] })[status] || ['#6b6350','#fff'];
@@ -9870,12 +9870,6 @@
   document.getElementById('profilePrintBtn').addEventListener('click', ()=> window.print());
   // touch the Location / Owner / Group / Herd Season line, or the status badge, to change it
   document.getElementById('profileBanner').addEventListener('click', e=>{
-    const regBtn = e.target.closest('[data-open-reg]');
-    if(regBtn){
-      e.stopPropagation();
-      openRegPage(regBtn.dataset.openReg);
-      return;
-    }
     const el = e.target.closest('[data-edit]');
     if(!el || !currentProfileCow) return;
     const open = { lot: editLotModal, owner: editOwnerModal, group: editGroupModal, season: editHerdSeasonModal, status: editStatusModal, reg: editRegModal }[el.dataset.edit];
@@ -10046,15 +10040,6 @@
   function isActiveStatus(cow){
     return !cow.status || cow.status === 'Active';
   }
-  // Registration number: a green button that opens the American Angus Association search page with the number filled in.
-  function openRegPage(reg){
-    if(!reg) return;
-    window.open('https://www.angus.org/Find-An-Animal?aid=' + encodeURIComponent(reg), '_blank', 'noopener');
-  }
-  function regBtnHtml(cow){
-    if(!cow.reg_number) return '';
-    return `<button type="button" data-open-reg="${escapeHtml(cow.reg_number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">${escapeHtml(cow.reg_number)}</button>`;
-  }
   // EPD button: sits beside the green registration button on the cow card and opens a popup with all of the cow's EPDs and $ values.
   const EPD_ORDER = ['CED','BW','WW','YW','RADG','DMI','YH','SC','Doc','Claw','Angle','PAP','HS','HP','CEM','Milk','Teat','UDDR','FL','MW','MH','$EN','CW','Marb','RE','Fat','$M','$W','$F','$G','$B','$C'];
   const EPD_NAMES = {CED:'Calving ease direct',BW:'Birth weight',WW:'Weaning weight',YW:'Yearling weight',RADG:'Residual avg daily gain',DMI:'Dry matter intake',YH:'Yearling height',SC:'Scrotal circumference',Doc:'Docility',Claw:'Claw set',Angle:'Foot angle',PAP:'Pulmonary arterial pressure',HS:'Hair shed',HP:'Heifer pregnancy',CEM:'Calving ease maternal',Milk:'Milk',Teat:'Teat size',UDDR:'Udder suspension',MW:'Mature weight',MH:'Mature height','$EN':'Energy value',CW:'Carcass weight',Marb:'Marbling',RE:'Ribeye area',Fat:'Fat thickness','$M':'Maternal',"$W":'Weaned calf','$F':'Feedlot','$G':'Grid','$B':'Beef','$C':'Combined'};
@@ -10095,7 +10080,11 @@
     }
     const modal = openModal(`
       <div class="modal-title">EPDs — #${escapeHtml(cow.number)}</div>
-      ${cow.reg_number ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">Reg # ${escapeHtml(cow.reg_number)}</div>` : ''}
+      <div style="font-family:Arial,sans-serif;font-size:14px;color:#2B2620;line-height:1.6;">
+        ${cow.reg_number ? `<div><b style="color:#1F4E8C;">Reg #</b> ${escapeHtml(cow.reg_number)}</div>` : ''}
+        ${cow.epd_sire ? `<div><b style="color:#1F4E8C;">Sire</b> ${escapeHtml(cow.epd_sire)}</div>` : ''}
+        ${cow.epd_dam ? `<div><b style="color:#1F4E8C;">Dam</b> ${escapeHtml(cow.epd_dam)}</div>` : ''}
+      </div>
       ${sections}
       ${dateLine ? `<div style="font-family:Arial,sans-serif;font-size:12px;color:#6b6350;margin-top:12px;">${escapeHtml(dateLine)}</div>` : ''}
       <div class="modal-actions" style="margin-top:12px;">
@@ -10653,7 +10642,7 @@
                 <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
                 <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
               </div>
-              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">${epdBtnHtml(cow)}${regBtnHtml(cow)}</div>
+              ${epdBtnHtml(cow)}
             </div>
             <div style="display:flex;margin-top:12px;">
               <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
@@ -10700,8 +10689,6 @@
         e.stopPropagation();
         const epdBtn = e.target.closest('[data-open-epd]');
         if(epdBtn){ openEpdModal(epdBtn.dataset.openEpd); return; }
-        const regBtn = e.target.closest('[data-open-reg]');
-        if(regBtn){ openRegPage(regBtn.dataset.openReg); return; }
         closeModal();
         profileReturnAction = returnAction || null;
         profileReturnLabel = returnAction ? (returnLabel || '← Back to Report') : '← All Cattle';
@@ -15450,8 +15437,6 @@
         e.stopPropagation();
         const epdBtn = e.target.closest('[data-open-epd]');
         if(epdBtn){ openEpdModal(epdBtn.dataset.openEpd); return; }
-        const regBtn = e.target.closest('[data-open-reg]');
-        if(regBtn){ openRegPage(regBtn.dataset.openReg); return; }
         goProfile();
       });
     });

@@ -669,6 +669,7 @@
     <button class="btn btn-nav-tool btn-full" id="exportEverythingBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📦</span>&nbsp;&nbsp;Export</button>
     <button class="btn btn-nav-tool btn-full" id="importDataBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📥</span>&nbsp;&nbsp;Import</button>
     <button class="btn btn-nav-tool btn-full" id="settingsBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">⚙️</span>&nbsp;&nbsp;Settings</button>
+    <button class="btn btn-nav-tool btn-full" id="updateEpdBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🧬</span>&nbsp;&nbsp;Update EPDs</button>
 
     <div class="section-label">Herd Tools</div>
     <button class="btn btn-nav-tool btn-full" id="vetPregCheckBtn" style="padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">🩺</span>&nbsp;&nbsp;Vet Preg Check</button>
@@ -9711,6 +9712,7 @@
   document.getElementById('addReasonBtn').addEventListener('click', addReasonModal);
   document.getElementById('appInfoBtn').addEventListener('click', showAppInfo);
   document.getElementById('settingsBtn').addEventListener('click', openSettingsModal);
+  document.getElementById('updateEpdBtn').addEventListener('click', openEpdUpdateModal);
   document.getElementById('appInfoHomeBtn').addEventListener('click', showHome);
   document.getElementById('textListEntryBtn').addEventListener('click', textCategoryPickerModal);
   document.getElementById('homeUtilitiesBtn').addEventListener('click', showUtilities);
@@ -10053,6 +10055,123 @@
   function epdBtnHtml(cow){
     if(!cow.epd) return '';
     return `<button type="button" data-open-epd="${escapeHtml(cow.number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">EPD</button>`;
+  }
+  // Utilities > Update EPDs: step-by-step instructions, then pick the Excel file downloaded from the Angus member site.
+  // Each cow is matched by registration number and gets her EPDs, sire, dam and the "loaded" date refreshed.
+  function loadSheetJs(){
+    if(window.XLSX) return Promise.resolve();
+    return new Promise((resolve, reject)=>{
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      sc.onload = ()=> resolve();
+      sc.onerror = ()=> reject(new Error('load'));
+      document.head.appendChild(sc);
+    });
+  }
+  function parseEpdWorkbook(buf){
+    const wb = XLSX.read(buf, {type:'array'});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+    if(!rows.length) return null;
+    const head = rows[0].map(h=>String(h).trim());
+    const col = name => head.indexOf(name);
+    const dollarCol = k => head.findIndex(h=> h.replace(/\s+/g,'').endsWith('(' + k + ')'));
+    const regI = col('Reg No.'), sireI = col('Sire Name'), damI = col('Dam Name');
+    if(regI < 0 || col('CED') < 0 || col('WW') < 0) return null;
+    const idx = EPD_ORDER.map(k=> k.charAt(0) === '$' && k !== '$EN' ? dollarCol(k) : col(k));
+    const out = {};
+    rows.slice(1).forEach(r=>{
+      const reg = String(r[regI]).trim();
+      if(!reg) return;
+      out[reg] = {
+        epd: idx.map(i=>{ if(i < 0) return null; const v = r[i]; return (v === '' || v === null || isNaN(Number(v))) ? null : Number(v); }),
+        sire: String(r[sireI] || '').trim() || null,
+        dam: String(r[damI] || '').trim() || null
+      };
+    });
+    return out;
+  }
+  function openEpdUpdateModal(){
+    const step = (n, title, text)=> `<div style="display:flex;gap:10px;margin-bottom:12px;"><div style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#1F4E8C;color:#fff;font-family:Arial,sans-serif;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;">${n}</div><div style="font-family:Arial,sans-serif;font-size:14px;color:#2B2620;line-height:1.45;"><b>${title}</b><br>${text}</div></div>`;
+    const modal = openModal(`
+      <div class="modal-title">Update EPDs</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;margin-bottom:12px;">Get the newest EPD file from the Angus member site, then pick it here. Every cow with a registration number is updated.</div>
+      ${step(1, 'Open the Angus member site', 'Tap the blue button below. A new tab opens. Sign in with your Angus account if it asks. Come back to this screen when you have the file.')}
+      <button class="btn btn-nav-tool btn-full" id="epdOpenSite" style="margin-bottom:14px;justify-content:center;">Open Angus member site</button>
+      ${step(2, 'Go to the EPD report', 'On the site, open <b>Reports</b>, then <b>EPD Reports</b>, then <b>EPD/$Values - Owned Animals</b>.')}
+      ${step(3, 'Set up the report', 'Under owners, pick your own ranch account so every animal you own is included. Set the birth date range wide, from 01/01/2000 to today, so no animal is left out.')}
+      ${step(4, 'Ask for the Excel file', 'Check the box that says <b>Excel</b>, then tap <b>Search</b>. The file downloads to your Downloads folder. It is named something like <b>regEpd_</b> followed by numbers.')}
+      ${step(5, 'Pick the file here', 'Tap the button below, choose that Excel file, and the app shows you what it found before it changes anything.')}
+      <input type="file" id="epdFile" accept=".xlsx,.xls" style="display:none;"/>
+      <button class="btn btn-nav-tool btn-full" id="epdPickFile" style="margin-bottom:10px;justify-content:center;">Choose Excel file</button>
+      <div id="epdUpdMsg" style="font-family:Arial,sans-serif;font-size:14px;color:#2B2620;min-height:20px;margin-bottom:8px;line-height:1.5;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="epdUpdClose">Close</button>
+        <button class="btn btn-barn hidden" id="epdUpdGo">Update cows</button>
+      </div>
+    `);
+    const msg = modal.querySelector('#epdUpdMsg'), go = modal.querySelector('#epdUpdGo'), fileIn = modal.querySelector('#epdFile');
+    let plan = null;
+    modal.querySelector('#epdUpdClose').addEventListener('click', closeModal);
+    modal.querySelector('#epdOpenSite').addEventListener('click', ()=> window.open('https://www.angusonline.org/', '_blank', 'noopener'));
+    modal.querySelector('#epdPickFile').addEventListener('click', ()=> fileIn.click());
+    fileIn.addEventListener('change', async ()=>{
+      const f = fileIn.files && fileIn.files[0];
+      if(!f) return;
+      go.classList.add('hidden'); plan = null;
+      msg.style.color = '#2B2620'; msg.textContent = 'Reading the file…';
+      try{
+        await loadSheetJs();
+      }catch(e){
+        msg.style.color = '#8B2A1E'; msg.textContent = 'Could not load the tool that reads Excel files. Check your internet and try again.'; return;
+      }
+      let data = null;
+      try{ data = parseEpdWorkbook(await f.arrayBuffer()); }catch(e){ data = null; }
+      if(!data){
+        msg.style.color = '#8B2A1E'; msg.textContent = 'That does not look like the EPD report. Make sure you chose the EPD/$Values - Owned Animals Excel file.'; return;
+      }
+      const mine = cows.filter(c=> c.reg_number && isActiveStatus(c));
+      const toUpdate = mine.filter(c=> data[c.reg_number]);
+      const missing = mine.filter(c=> !data[c.reg_number]);
+      const inApp = new Set(cows.filter(c=>c.reg_number).map(c=>c.reg_number));
+      const notInApp = Object.keys(data).filter(r=> !inApp.has(r)).length;
+      plan = toUpdate.map(c=> ({ cow:c, d:data[c.reg_number] }));
+      msg.style.color = '#2B2620';
+      msg.innerHTML = `<b>${toUpdate.length}</b> cows will be updated.` +
+        (missing.length ? `<br><b>${missing.length}</b> cows are not in the file: #${missing.slice(0,15).map(c=>escapeHtml(c.number)).join(', #')}${missing.length > 15 ? '…' : ''}` : '') +
+        `<br><b>${notInApp}</b> animals in the file are not in the app and will be skipped.`;
+      if(toUpdate.length) go.classList.remove('hidden');
+    });
+    go.addEventListener('click', async ()=>{
+      if(!plan || !plan.length) return;
+      go.classList.add('hidden');
+      const d = new Date();
+      const today = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      let done = 0;
+      for(const item of plan){
+        msg.textContent = 'Updating… ' + done + ' of ' + plan.length;
+        const body = { epd: item.d.epd, epd_sire: item.d.sire, epd_dam: item.d.dam, epd_updated: today };
+        try{
+          const updated = await api('/cows?number=eq.' + encodeURIComponent(item.cow.number), {
+            method:'PATCH',
+            headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+            body: JSON.stringify(body)
+          });
+          const i = cows.findIndex(c=>c.number===item.cow.number);
+          if(i !== -1 && updated && updated[0]) cows[i] = updated[0];
+          done++;
+        }catch(e){
+          saveOfflineCache();
+          msg.style.color = '#8B2A1E';
+          msg.textContent = 'Stopped after ' + done + ' of ' + plan.length + ' cows because the connection dropped. Check your internet and run it again.';
+          return;
+        }
+      }
+      saveOfflineCache();
+      msg.style.color = '#2B2620';
+      msg.innerHTML = '<b>Done.</b> ' + done + ' cows updated.';
+      showToast('EPDs updated');
+    });
   }
   function openEpdModal(num){
     const cow = cows.find(c=>c.number===num);

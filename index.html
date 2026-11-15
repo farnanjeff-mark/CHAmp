@@ -439,10 +439,10 @@
     #dskMenuPane > .view > .btn:first-child{padding:8px 12px !important;font-size:14px !important;margin-bottom:10px !important;}
     #dskMenuPane > .view > .btn:first-child > span{font-size:18px !important;}
     /* end menus in left pane */
-    /* desktop side menu colors (added Nov 1): black border on the blue, green and barn red tiles/buttons.
+    /* desktop side menu colors (added Nov 1, changed to white Nov 15): white border on the blue, green and brown tiles/buttons.
        The white keypad keys keep their blue border. To undo just the colors, delete this one rule and
        change the side menu background above from #FFFFFF back to #CBBFAE. */
-    #homeView [style*="linear-gradient"], #homeView [style*="background:#3C9142"], #homeView [style*="background:var(--barn)"]{border-color:#000 !important;}
+    #homeView [style*="linear-gradient"], #homeView [style*="background:#3C9142"], #homeView [style*="background:var(--barn)"], #homeView .btn-nav-tool, #homeView .btn-nav-section{border-color:#fff !important;}
     #desktopWelcome{display:none;font-family:Arial,sans-serif;font-size:18px;color:var(--muted);text-align:center;padding:60px 20px;}
     .app:not(:has(> .view:not(#homeView):not(.hidden))) #desktopWelcome{display:block;}
     .modal-backdrop{align-items:center;}
@@ -10712,13 +10712,11 @@
   }
   function cardRecentInfoHtml(num, compact){
     const lines = [];
-    let smallLines = 0; // Location / Group / Season stay small; everything after them is bigger
     const cow = cows.find(c=>c.number===num);
     if(cow){
       if(cow.lot && cow.lot !== 'None') lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(cow.lot)}`);
       if(cow.cow_group && cow.cow_group !== 'None') lines.push(`<span style="color:#8a8163;">Group:</span> ${escapeHtml(cow.cow_group)}`);
       if(cow.herd_season) lines.push(`<span style="color:#8a8163;">Season:</span> ${escapeHtml(cow.herd_season)}`);
-      smallLines = lines.length;
       const ageTxt = cardAgeText(num);
       if(ageTxt) lines.push(`<span style="color:#8a8163;">Age:</span> ${escapeHtml(ageTxt)}`);
     }
@@ -10791,7 +10789,7 @@
     }
     if(lines.length === 0) return '';
     return `<div style="${compact ? 'margin-top:12px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
-      ${lines.map((l,i)=>`<div style="font-family:Arial,sans-serif;font-size:${compact && i >= smallLines ? 15 : 13}px;color:#6b6350;">${l}</div>`).join('')}
+      ${lines.map(l=>`<div style="font-family:Arial,sans-serif;font-size:${compact ? 15 : 13}px;color:${compact ? '#2B2620' : '#6b6350'};">${compact ? l.split('color:#8a8163').join('color:#0C5A8E') : l}</div>`).join('')}
     </div>`;
   }
   function quickAddCardHtml(cow){

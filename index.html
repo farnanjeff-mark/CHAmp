@@ -10712,11 +10712,13 @@
   }
   function cardRecentInfoHtml(num, compact){
     const lines = [];
+    let smallLines = 0; // Location / Group / Season stay small; everything after them is bigger
     const cow = cows.find(c=>c.number===num);
     if(cow){
       if(cow.lot && cow.lot !== 'None') lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(cow.lot)}`);
       if(cow.cow_group && cow.cow_group !== 'None') lines.push(`<span style="color:#8a8163;">Group:</span> ${escapeHtml(cow.cow_group)}`);
       if(cow.herd_season) lines.push(`<span style="color:#8a8163;">Season:</span> ${escapeHtml(cow.herd_season)}`);
+      smallLines = lines.length;
       const ageTxt = cardAgeText(num);
       if(ageTxt) lines.push(`<span style="color:#8a8163;">Age:</span> ${escapeHtml(ageTxt)}`);
     }
@@ -10789,7 +10791,7 @@
     }
     if(lines.length === 0) return '';
     return `<div style="${compact ? 'margin-top:12px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
-      ${lines.map(l=>`<div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">${l}</div>`).join('')}
+      ${lines.map((l,i)=>`<div style="font-family:Arial,sans-serif;font-size:${compact && i >= smallLines ? 15 : 13}px;color:#6b6350;">${l}</div>`).join('')}
     </div>`;
   }
   function quickAddCardHtml(cow){
@@ -10800,7 +10802,7 @@
           <div style="flex:1;min-width:0;">
             <div style="width:104px;text-align:center;">
               <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
-              <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
+              <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
               ${epdBtnHtml(cow)}
             </div>
             ${cardRecentInfoHtml(cow.number, true)}

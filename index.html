@@ -471,6 +471,13 @@
 .rc-check{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:7px;border:2px solid var(--rc-color);background:#fff;flex-shrink:0;cursor:pointer;position:relative;margin:0;}
 .rc-check:checked{background:var(--rc-color);}
 .rc-check:checked::after{content:'\2713';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:16px;font-weight:700;line-height:1;}
+/* Cow card flag rows (Nov 15): plain labeled rows down the right side; the real checkbox sits invisibly on top and the row fills in barn color when it is checked */
+.flag-row{position:relative;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1.5px solid #2E88C4;border-radius:8px;background:#fff;color:#0C5A8E;font-family:Arial,sans-serif;font-size:13px;font-weight:700;user-select:none;}
+.flag-row > span:not(.flag-txt){position:absolute !important;inset:0;display:block !important;}
+.flag-row .rc-check{position:absolute;inset:0;width:100%;height:100%;opacity:0;border-radius:8px;margin:0;cursor:pointer;}
+.flag-row .rc-check:checked::after{display:none;}
+.flag-row:has(.rc-check:checked){background:var(--barn);border-color:var(--barn);color:#fff;}
+.card-epd-btn{width:104px;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#3C9142;color:#fff;border:1.5px solid #3C9142;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin:8px 0 4px;}
 
   /* ===== Vault (added) ===== */
   .vlt{position:fixed;inset:0;z-index:80;background:var(--paper);overflow:auto;overscroll-behavior:contain;}
@@ -10054,7 +10061,7 @@
   ];
   function epdBtnHtml(cow){
     if(!cow.epd) return '';
-    return `<button type="button" data-open-epd="${escapeHtml(cow.number)}" style="flex-shrink:0;background:#3C9142;color:#fff;border:none;border-radius:8px;padding:2px 12px;font-family:Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;cursor:pointer;">EPD</button>`;
+    return `<button type="button" class="card-epd-btn" data-open-epd="${escapeHtml(cow.number)}">EPD</button>`;
   }
   // Utilities > Update EPDs: step-by-step instructions, then pick the Excel file downloaded from the Angus member site.
   // Each cow is matched by registration number and gets her EPDs, sire, dam and the "loaded" date refreshed.
@@ -10673,7 +10680,7 @@
       ).join('') + calfBtn +
     `</div>`;
   }
-  function cardRecentInfoHtml(num){
+  function cardRecentInfoHtml(num, compact){
     const lines = [];
     const cow = cows.find(c=>c.number===num);
     if(cow){
@@ -10746,7 +10753,7 @@
       lines.push(`<span style="color:#8a8163;">Last note:</span> ${fmtDateShort(latestNote.note_date)} — ${escapeHtml(truncateText(latestNote.note||''))}`);
     }
     if(lines.length === 0) return '';
-    return `<div style="border-top:1px solid #eee;padding-top:8px;margin-top:10px;display:flex;flex-direction:column;gap:3px;">
+    return `<div style="${compact ? 'margin-top:8px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
       ${lines.map(l=>`<div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">${l}</div>`).join('')}
     </div>`;
   }
@@ -10754,47 +10761,22 @@
     const inactiveStyle = isActiveStatus(cow) ? '' : 'opacity:0.55;';
     return `
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
-        <div style="background:#fff;padding:16px 18px;cursor:pointer;border-bottom:1px solid #eee;" data-open-num="${escapeHtml(cow.number)}">
-          <div>
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
-              <div style="min-width:0;">
-                <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
-                <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
-              </div>
-              ${epdBtnHtml(cow)}
-            </div>
-            <div style="display:flex;margin-top:12px;">
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${tagNeededCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Tag</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${calvedCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Calved</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${needsEntryCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Flag</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${openCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Open</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${pregBtCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Preg BT</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${inHeatCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">In Heat</span>
-              </div>
-              <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;">
-                ${sellCheckboxHtml(cow)}
-                <span style="font-family:Arial,sans-serif;font-size:9px;font-weight:700;color:#6b6350;white-space:nowrap;">Sell</span>
-              </div>
-            </div>
+        <div style="background:#fff;padding:14px 18px 16px;cursor:pointer;border-bottom:1px solid #eee;display:flex;gap:12px;align-items:flex-start;" data-open-num="${escapeHtml(cow.number)}">
+          <div style="flex:1;min-width:0;">
+            <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
+            <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
+            ${epdBtnHtml(cow)}
+            ${cardRecentInfoHtml(cow.number, true)}
           </div>
-          ${cardRecentInfoHtml(cow.number)}
+          <div style="width:104px;flex:none;display:flex;flex-direction:column;gap:5px;">
+            <div class="flag-row"><span class="flag-txt">Tag</span>${tagNeededCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">Calved</span>${calvedCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">Flag</span>${needsEntryCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">Open</span>${openCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">Preg BT</span>${pregBtCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">In heat</span>${inHeatCheckboxHtml(cow)}</div>
+            <div class="flag-row"><span class="flag-txt">Sell</span>${sellCheckboxHtml(cow)}</div>
+          </div>
         </div>
         <div style="background:linear-gradient(135deg, #2E88C4, #0C5A8E);padding:14px;">
           ${profileQuickAddRowHtml(cow.number)}

@@ -10680,6 +10680,36 @@
       ).join('') + calfBtn +
     `</div>`;
   }
+  // Card extras (Nov 15): whole days between two YYYY-MM-DD dates, age text for cows born here, weight gain per day
+  function cardDaysBetween(aIso, bIso){
+    return Math.round((new Date(bIso+'T00:00:00') - new Date(aIso+'T00:00:00')) / 86400000);
+  }
+  function cardAgeText(num){
+    const born = calvings.find(c=> c.promoted_to_cow_number === num && c.calving_date);
+    if(!born) return '';
+    const days = cardDaysBetween(born.calving_date, todayLocal());
+    if(!(days >= 0)) return '';
+    if(days < 60) return days + ' days';
+    const months = Math.floor(days / 30.44);
+    if(months < 24) return months + ' months';
+    const yrs = Math.floor(months / 12), mo = months % 12;
+    return yrs + ' yr' + (mo ? ' ' + mo + ' mo' : '');
+  }
+  function cardGainText(num){
+    const w = weightsFor(num).filter(x=> x.weight != null && x.weigh_date).sort((a,b)=> b.weigh_date.localeCompare(a.weigh_date));
+    if(w.length < 2) return '';
+    const days = cardDaysBetween(w[1].weigh_date, w[0].weigh_date);
+    if(!(days > 0)) return '';
+    const gain = (Number(w[0].weight) - Number(w[1].weight)) / days;
+    if(isNaN(gain)) return '';
+    return (gain >= 0 ? '+' : '') + gain.toFixed(1) + ' lb/day since ' + fmtDateShort(w[1].weigh_date);
+  }
+  function cardDueText(dueIso){
+    const d = cardDaysBetween(todayLocal(), dueIso);
+    if(d > 0) return ' — in ' + d + ' day' + (d===1?'':'s');
+    if(d === 0) return ' — today';
+    return ' — ' + Math.abs(d) + ' day' + (d===-1?'':'s') + ' past';
+  }
   function cardRecentInfoHtml(num, compact){
     const lines = [];
     const cow = cows.find(c=>c.number===num);
@@ -10687,6 +10717,8 @@
       if(cow.lot && cow.lot !== 'None') lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(cow.lot)}`);
       if(cow.cow_group && cow.cow_group !== 'None') lines.push(`<span style="color:#8a8163;">Group:</span> ${escapeHtml(cow.cow_group)}`);
       if(cow.herd_season) lines.push(`<span style="color:#8a8163;">Season:</span> ${escapeHtml(cow.herd_season)}`);
+      const ageTxt = cardAgeText(num);
+      if(ageTxt) lines.push(`<span style="color:#8a8163;">Age:</span> ${escapeHtml(ageTxt)}`);
     }
     const latestMed = [...recordsFor(num)].sort((a,b)=>b.date.localeCompare(a.date))[0];
     if(latestMed){
@@ -10703,6 +10735,8 @@
     const latestWeight = [...weightsFor(num)].sort((a,b)=>b.weigh_date.localeCompare(a.weigh_date))[0];
     if(latestWeight){
       lines.push(`<span style="color:#8a8163;">Last weight:</span> ${fmtDateShort(latestWeight.weigh_date)}${latestWeight.weight!=null ? ' — '+latestWeight.weight+' lb' : ''}`);
+      const gainTxt = cardGainText(num);
+      if(gainTxt) lines.push(`<span style="color:#8a8163;">Gain:</span> ${escapeHtml(gainTxt)}`);
     }
     const latestBreeding = [...breedingFor(num)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
     if(latestBreeding){
@@ -10745,7 +10779,8 @@
       if(lb.notes) bredParts.push(escapeHtml(truncateText(lb.notes)));
       lines.push(`<span style="color:#8a8163;">Bred:</span> ${fmtDateShort(lb.breed_date)}${bredParts.length ? ' — '+bredParts.join(' — ') : ''}`);
       if(lb.expected_due_date && !isOpenNow){
-        lines.push(`<span style="color:#8a8163;">Expected calving:</span> ${fmtDateShort(lb.expected_due_date)}`);
+        const calvedSince = calvingsFor(num).some(c=> c.calving_date >= lb.breed_date);
+        lines.push(`<span style="color:#8a8163;">Expected calving:</span> ${fmtDateShort(lb.expected_due_date)}${calvedSince ? '' : cardDueText(lb.expected_due_date)}`);
       }
     }
     const latestNote = [...generalNotesFor(num)].sort((a,b)=>b.note_date.localeCompare(a.note_date))[0];
@@ -10753,7 +10788,7 @@
       lines.push(`<span style="color:#8a8163;">Last note:</span> ${fmtDateShort(latestNote.note_date)} — ${escapeHtml(truncateText(latestNote.note||''))}`);
     }
     if(lines.length === 0) return '';
-    return `<div style="${compact ? 'margin-top:8px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
+    return `<div style="${compact ? 'margin-top:12px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
       ${lines.map(l=>`<div style="font-family:Arial,sans-serif;font-size:13px;color:#6b6350;">${l}</div>`).join('')}
     </div>`;
   }
@@ -10763,9 +10798,11 @@
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
         <div style="background:#fff;padding:14px 18px 16px;cursor:pointer;border-bottom:1px solid #eee;display:flex;gap:12px;align-items:flex-start;" data-open-num="${escapeHtml(cow.number)}">
           <div style="flex:1;min-width:0;">
-            <span style="font-family:Arial,sans-serif;font-size:19px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
-            <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
-            ${epdBtnHtml(cow)}
+            <div style="width:104px;text-align:center;">
+              <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
+              <div style="font-family:Arial,sans-serif;font-size:10px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
+              ${epdBtnHtml(cow)}
+            </div>
             ${cardRecentInfoHtml(cow.number, true)}
           </div>
           <div style="width:104px;flex:none;display:flex;flex-direction:column;gap:5px;">

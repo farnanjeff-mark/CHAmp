@@ -477,12 +477,19 @@
 .flag-row .rc-check{position:absolute;inset:0;width:100%;height:100%;opacity:0;border-radius:8px;margin:0;cursor:pointer;}
 .flag-row .rc-check:checked::after{display:none;}
 .flag-row:has(.rc-check:checked){background:#3C9142;border-color:#3C9142;color:#fff;}
-.card-divider{width:2px;flex:none;align-self:stretch;background:#2E88C4;opacity:.55;border-radius:2px;margin:0 14px;}
-.card-info{flex:1;min-width:0;display:grid;grid-template-columns:62px 1fr;column-gap:6px;row-gap:3px;align-content:start;font-family:Arial,sans-serif;font-size:15px;line-height:1.25;color:#2B2620;}
-.card-info .ci-t{color:#0C5A8E;}
+.card-panel{width:112px;flex:none;display:flex;flex-direction:column;gap:5px;background:#CBBFAE;border-radius:12px;padding:8px 6px 6px;box-sizing:border-box;}
+.card-panel .flag-row{width:100%;}
+.card-numbadge{text-align:center;font-family:Arial,sans-serif;font-size:22px;font-weight:700;line-height:1.1;background:#fff;border-radius:8px;padding:4px 0;white-space:nowrap;}
+.card-tap{text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#5C3A21;margin:0 0 4px;white-space:nowrap;}
+.card-reg{height:32px;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
+.card-reg.has{background:#3C9142;border:1.5px solid #3C9142;color:#fff;cursor:pointer;}
+.card-reg.none{background:rgba(255,255,255,.35);border:1.5px dashed #9a8f7c;color:#7a705f;cursor:default;}
+.card-info{flex:1;min-width:0;display:flex;flex-direction:column;font-family:Arial,sans-serif;font-size:15px;line-height:1.25;color:#2B2620;}
+.card-info .ci-row{display:grid;grid-template-columns:62px 1fr;column-gap:6px;padding:4px 2px;border-bottom:1px solid #DCE9F3;}
+.card-info .ci-row:last-child{border-bottom:none;}
+.card-info .ci-t{color:#0C5A8E;font-weight:700;}
 .card-info .ci-e{color:#9a9488;}
 .card-info .ci-red{color:#A32D2D;font-weight:700;}
-.card-info .ci-reg{color:#3C9142;font-weight:700;cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
 .card-epd-btn{width:104px;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#3C9142;color:#fff;border:1.5px solid #3C9142;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin:8px 0 4px;}
 
   /* ===== Vault (added) ===== */
@@ -10721,8 +10728,6 @@
     const cow = cows.find(c=>c.number===num);
     const slots = {};
     if(cow){
-      const regTxt = (cow.reg_number || '').toString().trim();
-      if(regTxt) slots.reg = cow.epd ? `<span class="ci-reg" data-open-epd="${escapeHtml(cow.number)}">${escapeHtml(regTxt)}</span>` : escapeHtml(regTxt);
       if(cow.lot && cow.lot !== 'None') slots.loc = escapeHtml(cow.lot);
       if(cow.cow_group && cow.cow_group !== 'None') slots.group = escapeHtml(cow.cow_group);
       if(cow.herd_season) slots.season = escapeHtml(cow.herd_season);
@@ -10787,24 +10792,30 @@
     }
     const latestNote = [...generalNotesFor(num)].sort((a,b)=>b.note_date.localeCompare(a.note_date))[0];
     if(latestNote) slots.note = `${fmtDateShort(latestNote.note_date)} — ${escapeHtml(truncateText(latestNote.note||''))}`;
-    const order = [['reg','Reg #'],['loc','Loc'],['group','Group'],['season','Season'],['med','Med'],['calved','Calved'],['weight','Weight'],['bbby','BB by'],['vet','Vet'],['bred','Bred'],['due','Due'],['note','Note']];
+    const order = [['loc','Loc'],['group','Group'],['season','Season'],['med','Med'],['calved','Calved'],['weight','Weight'],['bbby','BB by'],['vet','Vet'],['bred','Bred'],['due','Due'],['note','Note']];
     const rows = order.filter(([k])=> k !== 'bbby' || slots.bbby).map(([k,label])=>{
       const red = k === 'bbby';
       const has = slots[k] != null && slots[k] !== '';
-      return `<div class="ci-t${red?' ci-red':''}">${label}</div><div class="${has ? (red?'ci-red':'') : 'ci-e'}">${has ? slots[k] : '—'}</div>`;
+      return `<div class="ci-row"><div class="ci-t${red?' ci-red':''}">${label}</div><div class="${has ? (red?'ci-red':'') : 'ci-e'}">${has ? slots[k] : '—'}</div></div>`;
     }).join('');
     return `<div class="card-info">${rows}</div>`;
+  }
+  // Registration box above the flags: green + opens the EPD card when she has EPDs; gray and inactive otherwise
+  function cardRegBoxHtml(cow){
+    const reg = (cow.reg_number || '').toString().trim();
+    if(reg && cow.epd) return `<div class="card-reg has" data-open-epd="${escapeHtml(cow.number)}">Reg ${escapeHtml(reg)}</div>`;
+    if(reg) return `<div class="card-reg none">Reg ${escapeHtml(reg)}</div>`;
+    return `<div class="card-reg none">Reg —</div>`;
   }
   function quickAddCardHtml(cow){
     const inactiveStyle = isActiveStatus(cow) ? '' : 'opacity:0.55;';
     return `
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
-        <div style="background:#fff;padding:14px 16px 16px;cursor:pointer;border-bottom:1px solid #eee;display:flex;align-items:stretch;" data-open-num="${escapeHtml(cow.number)}">
-          <div style="width:104px;flex:none;display:flex;flex-direction:column;gap:5px;">
-            <div style="text-align:center;">
-              <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
-              <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
-            </div>
+        <div style="background:#fff;padding:14px;cursor:pointer;border-bottom:1px solid #eee;display:flex;align-items:stretch;gap:12px;" data-open-num="${escapeHtml(cow.number)}">
+          <div class="card-panel">
+            <div class="card-numbadge">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</div>
+            <div class="card-tap">Tap for Profile &rsaquo;</div>
+            ${cardRegBoxHtml(cow)}
             <div class="flag-row"><span class="flag-txt">Tag</span>${tagNeededCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Calved</span>${calvedCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Flag</span>${needsEntryCheckboxHtml(cow)}</div>
@@ -10813,7 +10824,6 @@
             <div class="flag-row"><span class="flag-txt">In heat</span>${inHeatCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Sell</span>${sellCheckboxHtml(cow)}</div>
           </div>
-          <div class="card-divider"></div>
           ${cardRecentInfoHtml(cow.number)}
         </div>
         <div style="background:linear-gradient(135deg, #2E88C4, #0C5A8E);padding:14px;">

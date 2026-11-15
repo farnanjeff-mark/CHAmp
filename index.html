@@ -10743,7 +10743,8 @@
       if(gainTxt) slots.gain = escapeHtml(gainTxt);
     }
     const latestBreeding = [...breedingFor(num)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
-    if(latestBreeding){
+    // A breeding older than her latest calving is history: hide Bred/Vet/Due/BB by until she is bred again
+    if(latestBreeding && !(latestCalving && latestCalving.calving_date >= latestBreeding.breed_date)){
       const lb = latestBreeding;
       const method = (lb.pregnancy_method || '').trim();
       const isOpenNow = lb.pregnancy_status === 'Open';

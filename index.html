@@ -476,7 +476,12 @@
 .flag-row > span:not(.flag-txt){position:absolute !important;inset:0;display:block !important;}
 .flag-row .rc-check{position:absolute;inset:0;width:100%;height:100%;opacity:0;border-radius:8px;margin:0;cursor:pointer;}
 .flag-row .rc-check:checked::after{display:none;}
-.flag-row:has(.rc-check:checked){background:var(--barn);border-color:var(--barn);color:#fff;}
+.flag-row:has(.rc-check:checked){background:#3C9142;border-color:#3C9142;color:#fff;}
+.card-divider{width:2px;flex:none;align-self:stretch;background:#2E88C4;opacity:.55;border-radius:2px;margin:0 14px;}
+.card-info{flex:1;min-width:0;display:grid;grid-template-columns:62px 1fr;column-gap:6px;row-gap:3px;align-content:start;font-family:Arial,sans-serif;font-size:15px;line-height:1.25;color:#2B2620;}
+.card-info .ci-t{color:#0C5A8E;}
+.card-info .ci-e{color:#9a9488;}
+.card-info .ci-red{color:#A32D2D;font-weight:700;}
 .card-epd-btn{width:104px;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:#3C9142;color:#fff;border:1.5px solid #3C9142;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;cursor:pointer;margin:8px 0 4px;}
 
   /* ===== Vault (added) ===== */
@@ -10710,33 +10715,32 @@
     if(d === 0) return ' — today';
     return ' — ' + Math.abs(d) + ' day' + (d===-1?'':'s') + ' past';
   }
-  function cardRecentInfoHtml(num, compact){
-    const lines = [];
+  function cardRecentInfoHtml(num){
+    // Fixed rows, same order on every card. Empty ones show a gray dash. "BB by" only appears when it applies.
     const cow = cows.find(c=>c.number===num);
+    const slots = {};
     if(cow){
-      if(cow.lot && cow.lot !== 'None') lines.push(`<span style="color:#8a8163;">Location:</span> ${escapeHtml(cow.lot)}`);
-      if(cow.cow_group && cow.cow_group !== 'None') lines.push(`<span style="color:#8a8163;">Group:</span> ${escapeHtml(cow.cow_group)}`);
-      if(cow.herd_season) lines.push(`<span style="color:#8a8163;">Season:</span> ${escapeHtml(cow.herd_season)}`);
-      const ageTxt = cardAgeText(num);
-      if(ageTxt) lines.push(`<span style="color:#8a8163;">Age:</span> ${escapeHtml(ageTxt)}`);
+      if(cow.lot && cow.lot !== 'None') slots.loc = escapeHtml(cow.lot);
+      if(cow.cow_group && cow.cow_group !== 'None') slots.group = escapeHtml(cow.cow_group);
+      if(cow.herd_season) slots.season = escapeHtml(cow.herd_season);
     }
     const latestMed = [...recordsFor(num)].sort((a,b)=>b.date.localeCompare(a.date))[0];
     if(latestMed){
       const desc = latestMed.medicine ? `${latestMed.medicine}${latestMed.reason ? ' / '+latestMed.reason : ''}` : (latestMed.notes||'note');
-      lines.push(`<span style="color:#8a8163;">Last med:</span> ${fmtDateShort(latestMed.date)} — ${truncateText(desc)}`);
+      slots.med = `${fmtDateShort(latestMed.date)} — ${truncateText(desc)}`;
     }
     const latestCalving = [...calvingsFor(num)].sort((a,b)=>b.calving_date.localeCompare(a.calving_date))[0];
     if(latestCalving){
       const details = [`${calfSexLabel(latestCalving.calf_sex)} calf`];
       if(latestCalving.birth_weight!=null) details.push(`${latestCalving.birth_weight} lb`);
       if(latestCalving.notes) details.push(latestCalving.notes);
-      lines.push(`<span style="color:#8a8163;">Last calving:</span> ${fmtDateShort(latestCalving.calving_date)} — ${truncateText(details.join(', '))}`);
+      slots.calved = `${fmtDateShort(latestCalving.calving_date)} — ${truncateText(details.join(', '))}`;
     }
     const latestWeight = [...weightsFor(num)].sort((a,b)=>b.weigh_date.localeCompare(a.weigh_date))[0];
     if(latestWeight){
-      lines.push(`<span style="color:#8a8163;">Last weight:</span> ${fmtDateShort(latestWeight.weigh_date)}${latestWeight.weight!=null ? ' — '+latestWeight.weight+' lb' : ''}`);
+      slots.weight = `${fmtDateShort(latestWeight.weigh_date)}${latestWeight.weight!=null ? ' — '+latestWeight.weight+' lb' : ''}`;
       const gainTxt = cardGainText(num);
-      if(gainTxt) lines.push(`<span style="color:#8a8163;">Gain:</span> ${escapeHtml(gainTxt)}`);
+      if(gainTxt) slots.gain = escapeHtml(gainTxt);
     }
     const latestBreeding = [...breedingFor(num)].sort((a,b)=>b.breed_date.localeCompare(a.breed_date))[0];
     if(latestBreeding){
@@ -10746,19 +10750,15 @@
       // Off = vet days more than 10 from the breeding date (checked for every method, AI and ET included). A BB mark alone is not "off".
       const vetIsOff = !isOpenNow && vetMismatch(lb.breed_date, lb.vet_calls, lb.vet_call_date, null);
       const hasDays = !isOpenNow && parseDaysAlongFromVetCalls(lb.vet_calls) != null;
-      // Newest line on top, first event (the breeding) last
       const showBBBy = !!(vetIsOff && lb.natural_sire);
-      // Days she should be along on the vet call date if the breeding date were right
       let shouldBeDays = null;
       if(lb.vet_call_date && lb.breed_date){
         shouldBeDays = Math.round((new Date(lb.vet_call_date+'T00:00:00') - new Date(lb.breed_date+'T00:00:00')) / 86400000);
         if(!(shouldBeDays >= 0)) shouldBeDays = null;
       }
-      if(showBBBy){
-        lines.push(`<span style="color:#A32D2D;font-weight:700;">BB by: ${escapeHtml(lb.natural_sire)} (natural sire)</span>`);
-      }
+      if(showBBBy) slots.bbby = `${escapeHtml(lb.natural_sire)} (natural sire)`;
       if(lb.vet_call_date){
-        let vetText = `<span style="color:#8a8163;">Vet call:</span> ${fmtDateShort(lb.vet_call_date)}`;
+        let vetText = fmtDateShort(lb.vet_call_date);
         if(isOpenNow) vetText += ' — Open';
         else {
           if(lb.vet_calls) vetText += ' — '+escapeHtml(lb.vet_calls)+' days';
@@ -10769,7 +10769,7 @@
           // BB is dropped here when the red "BB by" line already says it
           if(method && !(method === 'BB' && showBBBy)) vetText += ' — '+escapeHtml(method);
         }
-        lines.push(vetText);
+        slots.vet = vetText;
       }
       const bredBull = lb.bred_to || lb.natural_sire || '';
       const bredParts = [];
@@ -10777,35 +10777,33 @@
       if(method && method !== 'BB') bredParts.push(escapeHtml(method));
       if(!bredBull && isOpenNow) bredParts.push('Open');
       if(lb.notes) bredParts.push(escapeHtml(truncateText(lb.notes)));
-      lines.push(`<span style="color:#8a8163;">Bred:</span> ${fmtDateShort(lb.breed_date)}${bredParts.length ? ' — '+bredParts.join(' — ') : ''}`);
+      slots.bred = `${fmtDateShort(lb.breed_date)}${bredParts.length ? ' — '+bredParts.join(' — ') : ''}`;
       if(lb.expected_due_date && !isOpenNow){
         const calvedSince = calvingsFor(num).some(c=> c.calving_date >= lb.breed_date);
-        lines.push(`<span style="color:#8a8163;">Expected calving:</span> ${fmtDateShort(lb.expected_due_date)}${calvedSince ? '' : cardDueText(lb.expected_due_date)}`);
+        slots.due = `${fmtDateShort(lb.expected_due_date)}${calvedSince ? '' : cardDueText(lb.expected_due_date)}`;
       }
     }
     const latestNote = [...generalNotesFor(num)].sort((a,b)=>b.note_date.localeCompare(a.note_date))[0];
-    if(latestNote){
-      lines.push(`<span style="color:#8a8163;">Last note:</span> ${fmtDateShort(latestNote.note_date)} — ${escapeHtml(truncateText(latestNote.note||''))}`);
-    }
-    if(lines.length === 0) return '';
-    return `<div style="${compact ? 'margin-top:12px;' : 'border-top:1px solid #eee;padding-top:8px;margin-top:10px;'}display:flex;flex-direction:column;gap:3px;">
-      ${lines.map(l=>`<div style="font-family:Arial,sans-serif;font-size:${compact ? 15 : 13}px;color:${compact ? '#2B2620' : '#6b6350'};">${compact ? l.split('color:#8a8163').join('color:#0C5A8E') : l}</div>`).join('')}
-    </div>`;
+    if(latestNote) slots.note = `${fmtDateShort(latestNote.note_date)} — ${escapeHtml(truncateText(latestNote.note||''))}`;
+    const order = [['loc','Loc'],['group','Group'],['season','Season'],['med','Med'],['calved','Calved'],['weight','Weight'],['gain','Gain'],['bbby','BB by'],['vet','Vet'],['bred','Bred'],['due','Due'],['note','Note']];
+    const rows = order.filter(([k])=> k !== 'bbby' || slots.bbby).map(([k,label])=>{
+      const red = k === 'bbby';
+      const has = slots[k] != null && slots[k] !== '';
+      return `<div class="ci-t${red?' ci-red':''}">${label}</div><div class="${has ? (red?'ci-red':'') : 'ci-e'}">${has ? slots[k] : '—'}</div>`;
+    }).join('');
+    return `<div class="card-info">${rows}</div>`;
   }
   function quickAddCardHtml(cow){
     const inactiveStyle = isActiveStatus(cow) ? '' : 'opacity:0.55;';
     return `
       <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
-        <div style="background:#fff;padding:14px 18px 16px;cursor:pointer;border-bottom:1px solid #eee;display:flex;gap:12px;align-items:flex-start;" data-open-num="${escapeHtml(cow.number)}">
-          <div style="flex:1;min-width:0;">
-            <div style="width:104px;text-align:center;">
+        <div style="background:#fff;padding:14px 16px 16px;cursor:pointer;border-bottom:1px solid #eee;display:flex;align-items:stretch;" data-open-num="${escapeHtml(cow.number)}">
+          <div style="width:104px;flex:none;display:flex;flex-direction:column;gap:5px;">
+            <div style="text-align:center;">
               <span style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;white-space:nowrap;">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</span>
               <div style="font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#6b6350;margin-top:2px;white-space:nowrap;">Tap for Profile &rsaquo;</div>
               ${epdBtnHtml(cow)}
             </div>
-            ${cardRecentInfoHtml(cow.number, true)}
-          </div>
-          <div style="width:104px;flex:none;display:flex;flex-direction:column;gap:5px;">
             <div class="flag-row"><span class="flag-txt">Tag</span>${tagNeededCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Calved</span>${calvedCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Flag</span>${needsEntryCheckboxHtml(cow)}</div>
@@ -10814,6 +10812,8 @@
             <div class="flag-row"><span class="flag-txt">In heat</span>${inHeatCheckboxHtml(cow)}</div>
             <div class="flag-row"><span class="flag-txt">Sell</span>${sellCheckboxHtml(cow)}</div>
           </div>
+          <div class="card-divider"></div>
+          ${cardRecentInfoHtml(cow.number)}
         </div>
         <div style="background:linear-gradient(135deg, #2E88C4, #0C5A8E);padding:14px;">
           ${profileQuickAddRowHtml(cow.number)}

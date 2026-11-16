@@ -3022,7 +3022,7 @@
 
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const la = latestRecordFor(a.number);
         const lb = latestRecordFor(b.number);
         if(!la && !lb) return cowNumCmp(a.number, b.number);
@@ -3033,7 +3033,7 @@
         return new Date(lb.created_at) - new Date(la.created_at);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -5601,7 +5601,7 @@
 
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const la = latestCalvingFor(a.number);
         const lb = latestCalvingFor(b.number);
         if(!la && !lb) return cowNumCmp(a.number, b.number);
@@ -5610,7 +5610,7 @@
         return lb.calving_date.localeCompare(la.calving_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -5697,7 +5697,7 @@
 
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const la = latestNoteFor(a.number);
         const lb = latestNoteFor(b.number);
         if(!la && !lb) return cowNumCmp(a.number, b.number);
@@ -5706,7 +5706,7 @@
         return lb.note_date.localeCompare(la.note_date);
       });
     } else if(sortMode === 'owner'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const oa = a.owner || '';
         const ob = b.owner || '';
         if(!oa && ob) return 1;
@@ -5716,7 +5716,7 @@
         return cowNumCmp(a.number, b.number);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -5795,7 +5795,7 @@
     const sortMode = document.getElementById('profileSortBy').value;
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const da = mostRecentActivityDate(a.number);
         const db = mostRecentActivityDate(b.number);
         if(!da && !db) return cowNumCmp(a.number, b.number);
@@ -5804,7 +5804,7 @@
         return db.localeCompare(da);
       });
     } else {
-      sorted = [...cows].sort((a,b)=>cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>cowNumCmp(a.number, b.number));
     }
     const [filterKind, filterValue] = locGroupVal ? locGroupVal.split(/:(.*)/s) : [null, null];
     const filtered = sorted.filter(c=>{
@@ -6972,7 +6972,7 @@
 
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const la = latestWeightFor(a.number);
         const lb = latestWeightFor(b.number);
         if(!la && !lb) return cowNumCmp(a.number, b.number);
@@ -6981,7 +6981,7 @@
         return lb.weigh_date.localeCompare(la.weigh_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -7059,7 +7059,7 @@
 
     let sorted;
     if(sortMode === 'recent'){
-      sorted = [...cows].sort((a,b)=>{
+      sorted = cows.filter(isActiveStatus).sort((a,b)=>{
         const la = latestBreedingFor(a.number);
         const lb = latestBreedingFor(b.number);
         if(!la && !lb) return cowNumCmp(a.number, b.number);
@@ -7068,7 +7068,7 @@
         return lb.breed_date.localeCompare(la.breed_date);
       });
     } else {
-      sorted = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      sorted = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
     }
 
     const filtered = sorted.filter(c=>{
@@ -17610,7 +17610,7 @@
       // each one as its own row together. Placed first since it's the
       // most useful "everything about this cow" view.
       const allInfoRows = [];
-      const sortedCowsForAllInfo = [...cows].sort((a,b)=> cowNumCmp(a.number, b.number));
+      const sortedCowsForAllInfo = cows.filter(isActiveStatus).sort((a,b)=> cowNumCmp(a.number, b.number));
       sortedCowsForAllInfo.forEach(cow=>{
         const entries = [];
         recordsFor(cow.number).forEach(r=>{
@@ -17875,12 +17875,12 @@
   function runHomeQuickSearch(){
     const q = homeQuickSearchValue.trim().toLowerCase();
     if(!q){ showToast('Enter a cow number'); return; }
-    const exact = cows.find(c=>c.number.toLowerCase()===q);
+    const exact = cows.find(c=>isActiveStatus(c) && c.number.toLowerCase()===q);
     if(exact){
       showQuickAction([exact]);
       return;
     }
-    const partial = cows.filter(c=>c.number.toLowerCase().includes(q)).sort((a,b)=>cowNumCmp(a.number, b.number));
+    const partial = cows.filter(c=>isActiveStatus(c) && c.number.toLowerCase().includes(q)).sort((a,b)=>cowNumCmp(a.number, b.number));
     if(partial.length === 0){
       showToast(`No cow found matching "${q}"`);
     } else {

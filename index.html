@@ -10567,13 +10567,57 @@
       cb.addEventListener('change', async e=>{
         e.stopPropagation();
         if(!cb.checked){
-          cb.checked = true;
-          showToast('To change this, log a new breeding record');
+          await unmarkCowOpenQuick(cb.dataset.num, cb);
           return;
         }
         await markCowOpenQuick(cb.dataset.num, cb);
       });
     });
+  }
+  // Unchecking Open clears the Open mark on her latest breeding record (status and open date go blank)
+  async function unmarkCowOpenQuick(num, checkboxEl){
+    const cow = cows.find(c=>c.number===num);
+    const latest = [...breedingFor(num)].sort((a,b)=> b.breed_date.localeCompare(a.breed_date))[0];
+    if(!cow || !latest || latest.pregnancy_status !== 'Open'){
+      if(checkboxEl) checkboxEl.checked = false;
+      return;
+    }
+    const body = { pregnancy_status:null, open_date:null };
+    try{
+      const updated = await api('/breeding_records?id=eq.' + encodeURIComponent(latest.id), {
+        method:'PATCH',
+        headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+        body: JSON.stringify(body)
+      });
+      const idx = breedingRecords.findIndex(b=>b.id===latest.id);
+      if(idx !== -1) breedingRecords[idx] = updated[0];
+      saveOfflineCache();
+      showToast(`#${num} no longer open`);
+    }catch(e){
+      if(e && e.isNetworkFailure){
+        const idx = breedingRecords.findIndex(b=>b.id===latest.id);
+        if(idx !== -1) breedingRecords[idx] = Object.assign({}, breedingRecords[idx], body, { _pendingSync:true });
+        cow._pendingOpenSync = true;
+        queuePendingWrite({
+          localId: makeLocalId('pw'),
+          kind: 'update', table: 'breeding_records', recordId: latest.id,
+          method: 'PATCH', path: '/breeding_records?id=eq.' + encodeURIComponent(latest.id),
+          body
+        });
+        saveOfflineCache();
+        showToast(`#${num} saved on this phone — will sync when you have signal`);
+      } else {
+        showToast('Could not save — try again');
+        if(checkboxEl) checkboxEl.checked = true;
+        return;
+      }
+    }
+    renderList();
+    renderProfileList();
+    updateOpenBadge();
+    updatePregBtBadge();
+    updateSellBadge();
+    updateSyncHoldBadge();
   }
   async function markCowOpenQuick(num, checkboxEl){
     const cow = cows.find(c=>c.number===num);

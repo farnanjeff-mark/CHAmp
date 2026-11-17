@@ -476,21 +476,28 @@
 .rc-check:checked{background:var(--rc-color);}
 .rc-check:checked::after{content:'\2713';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:16px;font-weight:700;line-height:1;}
 /* Cow card flag rows (Nov 15): plain labeled rows down the right side; the real checkbox sits invisibly on top and the row fills in barn color when it is checked */
-.flag-row{position:relative;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1.5px solid #2E88C4;border-radius:8px;background:#2E88C4;color:#fff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;user-select:none;}
+.flag-row{position:relative;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1.5px solid #0C5A8E;border-radius:8px;background:#0C5A8E;color:#fff;font-family:Arial,sans-serif;font-size:13px;font-weight:700;user-select:none;}
 .flag-row > span:not(.flag-txt){position:absolute !important;inset:0;display:block !important;}
 .flag-row .rc-check{position:absolute;inset:0;width:100%;height:100%;opacity:0;border-radius:8px;margin:0;cursor:pointer;}
 .flag-row .rc-check:checked::after{display:none;}
-.flag-row:has(.rc-check:checked){background:#3C9142;border-color:#3C9142;color:#fff;}
-.card-panel{width:114px;flex:none;display:flex;flex-direction:column;gap:5px;background:#fff;border:2px solid #2E88C4;border-radius:12px;padding:8px 6px 6px;box-sizing:border-box;}
+.flag-row:has(.rc-check:checked){background:#2E7D32;border-color:#2E7D32;color:#fff;}
+.card-panel{width:112px;flex:none;display:flex;flex-direction:column;gap:5px;box-sizing:border-box;}
+.card-head{background:#0C5A8E;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-tagbox{width:112px;height:32px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:Arial,sans-serif;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;}
+.card-tagbox.long{font-size:15px;}
+.card-head .card-tap{margin:0;color:#fff;font-size:13px;}
+.card-head .status-badge{margin-left:0;}
+.card-body{background:#fff;padding:12px;cursor:pointer;display:flex;align-items:stretch;gap:10px;}
+.card-btns{background:#0C5A8E;padding:12px;}
 .card-panel .flag-row{width:100%;}
-.card-numbadge{text-align:center;font-family:Arial,sans-serif;font-size:22px;font-weight:700;line-height:1.1;white-space:nowrap;}
-.card-tap{text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#6b6350;margin:0 0 4px;white-space:nowrap;}
-.card-reg{height:32px;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;}
-.card-reg.has{background:#3C9142;border:1.5px solid #3C9142;color:#fff;cursor:pointer;}
+.card-tap{text-align:center;font-family:Arial,sans-serif;font-size:12px;font-weight:700;color:#6b6350;margin:0 0 4px;white-space:nowrap;cursor:pointer;}
+.card-reg{height:32px;width:100%;box-sizing:border-box;display:flex;align-items:center;justify-content:flex-start;border-radius:8px;font-family:Arial,sans-serif;font-size:13px;font-weight:700;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px;}
+.card-reg.long{font-size:11px;}
+.card-reg.has{background:#2E7D32;border:1.5px solid #2E7D32;color:#fff;cursor:pointer;}
 .card-reg.none{background:#F3F0EA;border:1.5px dashed #9a8f7c;color:#7a705f;cursor:default;}
 .card-info{flex:1;min-width:0;display:flex;flex-direction:column;font-family:Arial,sans-serif;font-size:15px;line-height:1.25;color:#2B2620;}
-.card-info .ci-row{display:grid;grid-template-columns:62px 1fr;column-gap:6px;padding:4px 2px;border-bottom:1px solid #DCE9F3;}
-.card-info .ci-row:last-child{border-bottom:none;}
+.card-info .ci-row{display:grid;grid-template-columns:62px 1fr;column-gap:6px;padding:5px 7px;border-radius:6px;background:#fff;}
+.card-info .ci-row:nth-child(odd){background:#E6F1FB;}
 .card-info .ci-t{color:#0C5A8E;font-weight:700;}
 .card-info .ci-e{color:#9a9488;}
 .card-info .ci-red{color:#A32D2D;font-weight:700;}
@@ -10708,14 +10715,14 @@
     const activeCalf = latestActiveCalfFor(num);
     const cols = activeCalf ? 6 : 5;
     const calfBtn = activeCalf
-      ? `<button class="profile-quick-add-btn" data-num="${escapeHtml(num)}" data-type="calf" data-calving-id="${escapeHtml(activeCalf.id)}" title="Calf Record" style="background:#3C9142;border:1px solid rgba(255,255,255,.7);border-radius:8px;padding:15px 2px;cursor:pointer;">
+      ? `<button class="profile-quick-add-btn" data-num="${escapeHtml(num)}" data-type="calf" data-calving-id="${escapeHtml(activeCalf.id)}" title="Calf Record" style="background:#2E7D32;border:1px solid rgba(255,255,255,.7);border-radius:8px;padding:15px 2px;cursor:pointer;">
           <span style="font-family:Arial,sans-serif;font-size:15px;font-weight:500;color:#fff;">Calf</span>
         </button>`
       : '';
     return `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:6px;">` +
       PROFILE_QUICK_ADD_TYPES.map(t=>
-        `<button class="profile-quick-add-btn" data-num="${escapeHtml(num)}" data-type="${t.type}" title="${t.title}" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.7);border-radius:8px;padding:15px 2px;cursor:pointer;">
-          <span style="font-family:Arial,sans-serif;font-size:15px;font-weight:500;color:#fff;">${t.label}</span>
+        `<button class="profile-quick-add-btn" data-num="${escapeHtml(num)}" data-type="${t.type}" title="${t.title}" style="background:#fff;border:1px solid #fff;border-radius:8px;padding:15px 2px;cursor:pointer;">
+          <span style="font-family:Arial,sans-serif;font-size:15px;font-weight:500;color:#0C5A8E;">${t.label}</span>
         </button>`
       ).join('') + calfBtn +
     `</div>`;
@@ -10830,30 +10837,44 @@
   // Registration box above the flags: green + opens the EPD card when she has EPDs; gray and inactive otherwise
   function cardRegBoxHtml(cow){
     const reg = (cow.reg_number || '').toString().trim();
-    if(reg && cow.epd) return `<div class="card-reg has" data-open-epd="${escapeHtml(cow.number)}">Reg ${escapeHtml(reg)}</div>`;
-    if(reg) return `<div class="card-reg none">Reg ${escapeHtml(reg)}</div>`;
+    const lg = reg.length > 8 ? ' long' : '';
+    if(reg && cow.epd) return `<div class="card-reg has${lg}" data-open-epd="${escapeHtml(cow.number)}">Reg ${escapeHtml(reg)}</div>`;
+    if(reg) return `<div class="card-reg none${lg}">Reg ${escapeHtml(reg)}</div>`;
     return `<div class="card-reg none">Reg —</div>`;
+  }
+  // Tag number box colors follow the owner color; text flips dark on light boxes
+  function cardTagBoxHtml(cow){
+    const oc = ownerColor(cow.owner);
+    const fill = oc || '#FFFFFF';
+    const dark = (fill === '#D4B93C' || fill === '#FFFFFF');
+    const txt = dark ? (fill === '#FFFFFF' ? '#0C5A8E' : '#2B2620') : '#fff';
+    const lg = String(cow.number).length > 6 ? ' long' : '';
+    return `<div class="card-tagbox${lg}" style="background:${fill};color:${txt};">${escapeHtml(cow.number)}</div>`;
   }
   function quickAddCardHtml(cow){
     const inactiveStyle = isActiveStatus(cow) ? '' : 'opacity:0.55;';
     return `
-      <div style="background:#fff;border:2px solid #2E88C4;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
-        <div style="background:#fff;padding:14px;cursor:pointer;border-bottom:1px solid #eee;display:flex;align-items:stretch;gap:12px;" data-open-num="${escapeHtml(cow.number)}">
-          <div class="card-panel">
-            <div class="card-numbadge">${ownerNumHtml(cow.number, cow.owner)}${statusBadgeHtml(cow)}</div>
+      <div style="background:#fff;border:2px solid #0C5A8E;border-radius:18px;box-shadow:0 1px 2px rgba(43,38,32,.10), 0 6px 16px rgba(43,38,32,.14);overflow:hidden;margin-bottom:18px;${inactiveStyle}">
+        <div data-open-num="${escapeHtml(cow.number)}" style="cursor:pointer;">
+          <div class="card-head">
+            <div style="display:flex;align-items:center;gap:8px;">${cardTagBoxHtml(cow)}${statusBadgeHtml(cow)}</div>
             <div class="card-tap">Tap for Profile &rsaquo;</div>
-            ${cardRegBoxHtml(cow)}
-            <div class="flag-row"><span class="flag-txt">Tag</span>${tagNeededCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">Calved</span>${calvedCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">Flag</span>${needsEntryCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">Open</span>${openCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">Preg BT</span>${pregBtCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">In heat</span>${inHeatCheckboxHtml(cow)}</div>
-            <div class="flag-row"><span class="flag-txt">Sell</span>${sellCheckboxHtml(cow)}</div>
           </div>
-          ${cardRecentInfoHtml(cow.number)}
+          <div class="card-body">
+            <div class="card-panel">
+              ${cardRegBoxHtml(cow)}
+              <div class="flag-row"><span class="flag-txt">Tag</span>${tagNeededCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">Calved</span>${calvedCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">Flag</span>${needsEntryCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">Open</span>${openCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">Preg BT</span>${pregBtCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">In heat</span>${inHeatCheckboxHtml(cow)}</div>
+              <div class="flag-row"><span class="flag-txt">Sell</span>${sellCheckboxHtml(cow)}</div>
+            </div>
+            ${cardRecentInfoHtml(cow.number)}
+          </div>
         </div>
-        <div style="background:linear-gradient(135deg, #2E88C4, #0C5A8E);padding:14px;">
+        <div class="card-btns">
           ${profileQuickAddRowHtml(cow.number)}
         </div>
       </div>

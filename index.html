@@ -17310,7 +17310,7 @@
       return;
     }
     badge.textContent = calvedSinceEntries().length;
-    label.textContent = 'Since ' + fmtDateShort(homeStatsSettings.calved_since_date);
+    label.textContent = fmtDateShort(homeStatsSettings.calved_since_date);
   }
 
   async function saveCalvedSinceDate(dateVal){

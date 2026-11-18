@@ -2601,6 +2601,11 @@
     ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register'],['homeQuickSearchMicBtn','Voice']
   ];
   const MENU_MAX_MAIN = 11;
+  // Buttons that only appear on a wide screen (a computer, or a tablet held sideways). On a phone they are
+  // left out of Main, More and the Settings list. Their saved place is kept, so they come back on a wide screen.
+  const MENU_WIDE_ONLY = ['checkbookBtn'];
+  const MENU_WIDE_MIN_WIDTH = 1000;
+  function menuHidden(id){ return window.innerWidth < MENU_WIDE_MIN_WIDTH && MENU_WIDE_ONLY.indexOf(id) >= 0; }
   const MENU_SYNC_ID = 'homeSyncHoldWrap';   // the green Sync box (number pad, top-left) can move to the More screen too
   const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
@@ -2689,7 +2694,7 @@
     menuOrdered().forEach(m=>{
       const el = document.getElementById(m[0]);
       const inSub = menuSubIds.indexOf(m[0]) >= 0;
-      const show = desk || (menuPage === 'sub' ? inSub : !inSub);
+      const show = !menuHidden(m[0]) && (desk || (menuPage === 'sub' ? inSub : !inSub));
       el.classList.toggle('menu-off', !show);
       if(show) showIds.push(m[0]);
     });
@@ -2735,7 +2740,7 @@
       </div>`;
     }
     function draw(){
-      const all = menuOrdered();
+      const all = menuOrdered().filter(m=>!menuHidden(m[0]));
       const main = all.filter(m=>menuSubIds.indexOf(m[0]) < 0), more = all.filter(m=>menuSubIds.indexOf(m[0]) >= 0);
       const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#5C3A21;margin:12px 0 2px;">${t}</div>`;
       list.innerHTML = head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
@@ -2744,7 +2749,7 @@
         + (more.length ? more.map((m,i)=>rowHtml(m,i===0,i===more.length-1)).join('') : '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:6px 0;">Nothing here yet.</div>');
     }
     function swapWithNeighbor(id, dir){
-      const grp = menuOrdered().filter(m=>(menuSubIds.indexOf(m[0]) >= 0) === (menuSubIds.indexOf(id) >= 0)).map(m=>m[0]);
+      const grp = menuOrdered().filter(m=>!menuHidden(m[0]) && (menuSubIds.indexOf(m[0]) >= 0) === (menuSubIds.indexOf(id) >= 0)).map(m=>m[0]);
       const k = grp.indexOf(id), other = grp[k+dir];
       if(!other) return;
       const a = menuOrder.indexOf(id), b = menuOrder.indexOf(other);
@@ -2762,7 +2767,7 @@
     list.addEventListener('change', e=>{
       const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
       if(cb.checked){
-        const mainCount = MENU_ITEMS.filter(m=>menuSubIds.indexOf(m[0]) < 0).length;
+        const mainCount = MENU_ITEMS.filter(m=>!menuHidden(m[0]) && menuSubIds.indexOf(m[0]) < 0).length;
         if(mainCount >= MENU_MAX_MAIN){
           cb.checked = false;
           msg.textContent = 'Main is full (11 buttons). Turn another one off first.';
@@ -2780,6 +2785,13 @@
   }
   renderHomeMenu();
   try{ window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').addEventListener('change', renderHomeMenu); }catch(e){}
+  (function(){
+    let wasNarrow = window.innerWidth < MENU_WIDE_MIN_WIDTH;
+    window.addEventListener('resize', ()=>{
+      const now = window.innerWidth < MENU_WIDE_MIN_WIDTH;
+      if(now !== wasNarrow){ wasNarrow = now; renderHomeMenu(); }
+    });
+  })();
 
   function openSettingsModal(){
     const modal = openModal(`
@@ -21269,7 +21281,7 @@ $("impGo").onclick = () => {
   // ---------- wiring ----------
   var openBtn = $('checkbookBtn');
   // The register is laid out for a computer screen, so narrow screens (phones) only get a short message.
-  var DESKTOP_MIN_WIDTH = 900, narrowT = null;
+  var DESKTOP_MIN_WIDTH = 1000, narrowT = null;
   function onOpenClick(){
     if(window.innerWidth < DESKTOP_MIN_WIDTH){
       var t = $('toast');

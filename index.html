@@ -18321,7 +18321,7 @@
       homeQuickSearchValue = num;
       updateHomeQuickSearchDisplay();
       showToast('Heard ' + num);
-      setTimeout(()=>{ if(homeQuickSearchValue === num) runHomeQuickSearch(); }, 900);
+      runHomeQuickSearch();   // open her card right away
     };
     rec.onerror = (ev)=>{
       const e = ev && ev.error;

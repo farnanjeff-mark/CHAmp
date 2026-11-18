@@ -377,9 +377,9 @@
   #desktopWelcome, .dsk-only, .dsk-find{display:none;}
   @media screen and (min-width:1100px) and (hover:hover) and (pointer:fine){
     body{background:#FFFFFF;}
-    .app{max-width:none;margin:0 0 0 340px;background:#FFFFFF;}
+    .app{max-width:none;margin:0 0 0 388px;background:#FFFFFF;}
     #homeView, #homeView.hidden{
-      display:block !important;position:fixed;left:0;top:0;bottom:0;width:340px;z-index:10;
+      display:block !important;position:fixed;left:0;top:0;bottom:0;width:388px;z-index:10;
       overflow-y:auto;background:#CBBFAE;border-right:3px solid var(--ink);padding:14px 8px 40px;
     }
     /* side menu polish (added Nov 1): farm name box, small section labels, roomier spacing.
@@ -402,6 +402,11 @@
     /* Add Cow button beside the cow number box (it is moved here by a few lines of script near homeAddCowBtn). */
     .dsk-find #homeAddCowBtn{flex:0 0 auto !important;flex-direction:row !important;min-height:44px !important;height:44px;padding:0 14px !important;gap:6px !important;border-radius:8px !important;}
     .dsk-find #homeAddCowBtn span{font-size:15px !important;}
+    /* row spacing on the computer (class based, because the old text-matching rules stop matching once the rows are rearranged) */
+    #homeView .home-btn-row{padding-top:8px !important;gap:8px !important;}
+    #homeView .home-btn-row.home-top-row, #homeView .home-btn-row.home-row-first{padding-top:0 !important;}
+    /* left side menu: button names are regular weight (not bold) */
+    #homeView .home-btn-row, #homeView .home-btn-row *, .dsk-find #homeAddCowBtn, .dsk-find #homeAddCowBtn *{font-weight:400 !important;}
     .dsk-find #homeAddCowBtn span:first-child{font-size:22px !important;}
     #dskCowGo{display:none !important;width:56px;height:44px;background:#3C9142;color:#fff;border:1px solid #2E88C4;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:15px;cursor:pointer;}
     /* Blue and white instead of tan on desktop (added Nov 1): cards, pop-ups, forms, and report tables.
@@ -588,7 +593,7 @@
   <div class="view" id="homeView">
     <div style="text-align:center;padding:4px 10px;">
       <div class="dsk-only dsk-name">Farnan Cattle Company</div>
-      <div class="home-btn-row" style="display:flex;gap:6px;margin:-15px 0 25px;">
+      <div class="home-btn-row home-top-row" style="display:flex;gap:6px;margin:-15px 0 25px;">
         <button class="btn" id="homeProfileBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">🐮</span>Profile</button>
         <button class="btn" id="homeUtilitiesBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">🛠️</span>Utilities</button>
         <button class="btn" id="homeReportsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">📊</span>Reports</button>
@@ -2678,6 +2683,7 @@
     if(!menuRows){
       menuRows = ['homeCalvedWrap','homeTagNeededWrap','homeTodoWrap','vaultBtn'].map(id=>document.getElementById(id).parentNode);
       menuRows.forEach(r=>r.classList.add('home-btn-row'));
+      menuRows[0].classList.add('home-row-first');
       // Voice button (say a cow number, or "mark 4008 calved"). Starts life as a tile in the last row, then moves like the others.
       const mic = document.createElement('div');
       mic.id = 'homeQuickSearchMicBtn';
@@ -2700,7 +2706,8 @@
     });
     if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
-    const seq = showIds.map(id=>document.getElementById(id));
+    // Computer screen: the original 4 x 4 grid in the original order (no Sync/Voice, no saved order)
+    const seq = (desk ? MENU_ITEMS.filter(m=>m[0]!==MENU_SYNC_ID && m[0]!=='homeQuickSearchMicBtn').map(m=>m[0]) : showIds).map(id=>document.getElementById(id));
     // Sync is now a regular button (its old spot at the top-left of the number pad stays blank).
     // Computer screen has no number pad, so Sync and Voice stay hidden there.
     document.getElementById(MENU_SYNC_ID).style.minHeight = '62px';

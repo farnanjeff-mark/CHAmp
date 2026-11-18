@@ -364,6 +364,7 @@
      open, and report tables get a wider window.
      TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
      and delete the one <div id="desktopWelcome"> line near the top of the page body. */
+  .menu-off{display:none !important;}
   #desktopWelcome, .dsk-only, .dsk-find{display:none;}
   @media screen and (min-width:1100px) and (hover:hover) and (pointer:fine){
     body{background:#FFFFFF;}
@@ -2578,6 +2579,94 @@
     }
     return res.status === 429 ? 'toomany' : 'wrong';
   }
+  // ===== MAIN / MORE MENU (phone home screen) =====
+  // The 16 buttons below the number pad can each live on the Main screen or the More screen.
+  // Main holds up to 11 of them plus the brown More button (12 boxes = 3 rows of 4).
+  // The choice is saved on this device (localStorage). The top row (Profile, Utilities, Reports, Farm Ops) never moves.
+  const MENU_ITEMS = [
+    ['homeCalvedWrap','Calved'],['homeDueSoonWrap','Due Soon'],['homeCalvedSinceWrap','Calved Since'],['homeTodaysActivityWrap','Activity'],
+    ['homeTagNeededWrap','Tag'],['homeFlaggedWrap','Flagged'],['homeOpenWrap','Open'],['homePregBtWrap','Preg BT'],
+    ['homeTodoWrap','To Do'],['homeSellWrap','Sell'],['fieldCountBtn','Field Count'],['homeHerdTallyBtn','Herd Tally'],
+    ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register']
+  ];
+  const MENU_MAX_MAIN = 11;
+  const MENU_DEFAULT_SUB = ['homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
+  let menuSubIds = MENU_DEFAULT_SUB.slice();
+  let menuPage = 'main';
+  let menuRows = null, menuMoreBtn = null, menuBackBtn = null;
+  try{
+    const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
+    if(Array.isArray(saved)) menuSubIds = saved.filter(id=>MENU_ITEMS.some(m=>m[0]===id));
+  }catch(e){}
+  function menuSave(){ try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){} }
+  function menuIsDesktop(){ return window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').matches; }
+  function menuMakeNavBtn(icon, label, onClick){
+    const tile = document.getElementById('fieldCountBtn');
+    const b = document.createElement('div');
+    b.setAttribute('role','button');
+    b.style.cssText = tile.style.cssText;
+    b.style.background = '#5C3A21';
+    b.innerHTML = '<span style="font-size:24px;line-height:1;">'+icon+'</span><span style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0;line-height:1.1;text-align:center;white-space:nowrap;">'+label+'</span>';
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function renderHomeMenu(){
+    if(!menuRows){
+      menuRows = ['homeCalvedWrap','homeTagNeededWrap','homeTodoWrap','vaultBtn'].map(id=>document.getElementById(id).parentNode);
+      menuMoreBtn = menuMakeNavBtn('⋯','More', ()=>{ menuPage = 'sub'; renderHomeMenu(); });
+      menuBackBtn = menuMakeNavBtn('◂','Main', ()=>{ menuPage = 'main'; renderHomeMenu(); });
+    }
+    const desk = menuIsDesktop();
+    const showIds = [];
+    MENU_ITEMS.forEach(m=>{
+      const el = document.getElementById(m[0]);
+      const inSub = menuSubIds.indexOf(m[0]) >= 0;
+      const show = desk || (menuPage === 'sub' ? inSub : !inSub);
+      el.classList.toggle('menu-off', !show);
+      if(show) showIds.push(m[0]);
+    });
+    if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
+    if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
+    const seq = showIds.map(id=>document.getElementById(id));
+    if(!desk){
+      if(menuPage === 'sub') seq.push(menuBackBtn);
+      else if(menuSubIds.length) seq.push(menuMoreBtn);
+    }
+    let used = 0;
+    seq.forEach((el, i)=>{ const r = menuRows[Math.floor(i/4)]; r.appendChild(el); used = Math.floor(i/4)+1; });
+    menuRows.forEach((r, i)=>{
+      r.classList.toggle('menu-off', i >= used && !desk ? true : false);
+      r.style.marginBottom = (i === used-1 || (desk && i === 3)) ? '12px' : '0';
+    });
+  }
+  function wireMenuSettings(modal){
+    const list = modal.querySelector('#menuSetList'), msg = modal.querySelector('#menuSetMsg');
+    if(!list) return;
+    list.innerHTML = MENU_ITEMS.map(m=>`
+      <label class="setting-row" for="menuSet_${m[0]}">
+        <span>${m[1]}</span>
+        <span class="switch"><input type="checkbox" id="menuSet_${m[0]}" data-id="${m[0]}" ${menuSubIds.indexOf(m[0])<0?'checked':''}/><span class="slider"></span></span>
+      </label>`).join('');
+    list.addEventListener('change', e=>{
+      const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
+      if(cb.checked){
+        const mainCount = MENU_ITEMS.length - menuSubIds.length;
+        if(mainCount >= MENU_MAX_MAIN){
+          cb.checked = false;
+          msg.textContent = 'Main is full (11 buttons). Turn another one off first.';
+          return;
+        }
+        menuSubIds = menuSubIds.filter(x=>x!==id);
+      } else if(menuSubIds.indexOf(id) < 0){
+        menuSubIds.push(id);
+      }
+      msg.textContent = '';
+      menuSave(); menuPage = 'main'; renderHomeMenu();
+    });
+  }
+  renderHomeMenu();
+  try{ window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').addEventListener('change', renderHomeMenu); }catch(e){}
+
   function openSettingsModal(){
     const modal = openModal(`
       <div class="modal-title">Settings</div>
@@ -2595,6 +2684,10 @@
           <span>Hide LA breeding activity<span class="setting-sub">On hides breedings of cows owned by LA from the Activity report and its count.</span></span>
           <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
         </label>
+        <div style="font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:#0C5A8E;margin:14px 0 4px;">Home screen buttons</div>
+        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:6px;">On = shows on the Main screen. Off = moves to the More screen. Main holds up to 11 buttons. This is saved on this device only.</div>
+        <div id="menuSetMsg" style="font-family:Arial,sans-serif;font-size:13px;color:#8B2A1E;min-height:18px;"></div>
+        <div id="menuSetList"></div>
         <div class="modal-actions"><button class="btn btn-barn btn-full" id="settingsCloseBtn">Close</button></div>
       </div>
     `);
@@ -2613,6 +2706,7 @@
         modal.querySelector('#settingsLock').classList.add('hidden');
         modal.querySelector('#settingsBody').classList.remove('hidden');
         syncLaToggle();
+        wireMenuSettings(modal);
         modal.querySelector('#showLaBreedingToggle').addEventListener('change', e=>{ saveLaBreedingSetting(e.target.checked); });
       } else {
         pwEl.value = '';

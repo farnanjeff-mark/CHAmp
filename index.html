@@ -2615,7 +2615,7 @@
   const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
   let menuPage = 'main';
-  let menuRows = null, menuMoreBtn = null, menuBackBtn = null;
+  let menuRows = null, menuMoreBtn = null, menuBackBtn = null, menuBig = null, menuBigRows = null;
   try{
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
     if(Array.isArray(saved)) menuSubIds = saved.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
@@ -2707,7 +2707,17 @@
     if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
     // Computer screen: the original 4 x 4 grid in the original order (no Sync/Voice, no saved order)
-    const seq = (desk ? MENU_ITEMS.filter(m=>m[0]!==MENU_SYNC_ID && m[0]!=='homeQuickSearchMicBtn').map(m=>m[0]) : showIds).map(id=>document.getElementById(id));
+    const BIG = ['vaultBtn','checkbookBtn'];   // computer: Vault and Register are big full-width buttons at the top
+    const seq = (desk ? MENU_ITEMS.filter(m=>m[0]!==MENU_SYNC_ID && m[0]!=='homeQuickSearchMicBtn' && BIG.indexOf(m[0])<0).map(m=>m[0]) : showIds).map(id=>document.getElementById(id));
+    if(!menuBig){
+      menuBig = document.createElement('div');
+      menuBig.className = 'menu-off';
+      menuBig.style.cssText = 'margin-bottom:14px;';
+      menuBigRows = [0,1].map(()=>{ const r = document.createElement('div'); r.className = 'home-btn-row'; r.style.cssText = 'display:flex;gap:6px;padding-top:6px;'; menuBig.appendChild(r); return r; });
+      menuRows[0].parentNode.insertBefore(menuBig, menuRows[0]);
+    }
+    menuBig.classList.toggle('menu-off', !desk);
+    if(desk){ menuBigRows[0].appendChild(document.getElementById('vaultBtn')); menuBigRows[1].appendChild(document.getElementById('checkbookBtn')); }
     // Sync is now a regular button (its old spot at the top-left of the number pad stays blank).
     // Computer screen has no number pad, so Sync and Voice stay hidden there.
     document.getElementById(MENU_SYNC_ID).style.minHeight = '62px';
@@ -2729,8 +2739,8 @@
     let used = 0;
     seq.forEach((el, i)=>{ const r = menuRows[Math.floor(i/4)]; r.appendChild(el); used = Math.floor(i/4)+1; });
     menuRows.forEach((r, i)=>{
-      r.classList.toggle('menu-off', i >= used && !desk ? true : false);
-      r.style.marginBottom = (i === used-1 || (desk && i === menuRows.length-1)) ? '12px' : '0';
+      r.classList.toggle('menu-off', i >= used);
+      r.style.marginBottom = (i === used-1) ? '12px' : '0';
     });
   }
   function wireMenuSettings(modal){

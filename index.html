@@ -365,6 +365,9 @@
      TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
      and delete the one <div id="desktopWelcome"> line near the top of the page body. */
   .menu-off{display:none !important;}
+  /* Number pad: bigger tappable area (reaches into the gaps) and no double-tap zoom, so fast taps always register. */
+  .home-keypad button{position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+  .home-keypad button::after{content:'';position:absolute;top:-3.5px;right:-3.5px;bottom:-3.5px;left:-3.5px;}
   /* Phone: every home button (top row, Main and More screens, number pad) is exactly the same height (70) so nothing grows on iPhone. */
   @media screen and (max-width:1099px){
     #homeView .home-btn-row > *{height:70px !important;min-height:70px !important;padding-top:4px !important;padding-bottom:4px !important;box-sizing:border-box;overflow:hidden;}

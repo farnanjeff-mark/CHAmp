@@ -1557,6 +1557,7 @@
     <button class="btn btn-outline btn-full" id="herdTallyHomeBtn" style="margin-bottom:16px;">🏠 Home</button>
     <div class="modal-title" style="margin-bottom:14px;">Herd Tally</div>
     <button class="btn" id="headcountByOwnerBtn" style="width:100%;background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:10px;text-align:left;padding:12px 14px;font-size:15px;margin-bottom:8px;"><span style="font-size:20px;">📊</span>Headcount</button>
+    <div id="herdTallyOutputRow" style="display:flex;gap:8px;margin-bottom:14px;"></div>
     <div id="herdTallyContent"></div>
     <div id="herdTallyEmptyState" class="empty hidden">No locations added yet.<br/>Tap "+ Add Location" to get started.</div>
     <button class="btn btn-nav-tool btn-full" id="addHerdTallyLocationBtn" style="margin-top:14px;">+ Add Location</button>
@@ -5916,6 +5917,7 @@
     modal.querySelector('#closeHeatReportBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
     modal.querySelector('#heatShowCardsBtn').addEventListener('click', ()=>{ closeModal(); showProfileListInHeat(); });
+    addReportOutputRow(modal, 'In Heat Report', '#heatReportTable');
   }
   function updateInHeatBadge(){
     const badge = document.getElementById('homeInHeatBadge');
@@ -9841,6 +9843,20 @@
   document.getElementById('hayingYearFilter').addEventListener('change', renderHayingList);
   document.getElementById('importDataBtn').addEventListener('click', showImportView);
   document.getElementById('headcountByOwnerBtn').addEventListener('click', headcountByOwnerModal);
+  (function(){
+    const row = document.getElementById('herdTallyOutputRow');
+    row.innerHTML = reportOutputButtonsHtml();
+    row.querySelectorAll('button').forEach(b=>{ b.style.flex = '1'; });
+    wireReportOutputButtons(row, 'Herd Tally', ()=>{
+      const sorted = [...herdTally].sort((a,b)=> a.location.localeCompare(b.location));
+      if(!sorted.length) return null;
+      const rows = sorted.map(e=>[e.location, String(e.cows||0), String(e.calves||0), String(e.bulls||0)]);
+      const tot = sorted.reduce((a,e)=>({cows:a.cows+(e.cows||0), calves:a.calves+(e.calves||0), bulls:a.bulls+(e.bulls||0)}), {cows:0,calves:0,bulls:0});
+      rows.push(['Total', String(tot.cows), String(tot.calves), String(tot.bulls)]);
+      const lines = rows.map(r=> `${r[0]}: ${r[1]} cows, ${r[2]} calves, ${r[3]} bulls`);
+      return { headers:['Location','Cows','Calves','Bulls'], rows, lines };
+    });
+  })();
   document.getElementById('advancedSearchBtn').addEventListener('click', ()=> openSearchPage('cow'));
   document.getElementById('askClaudeBtn').addEventListener('click', askClaudeModal);
   document.getElementById('calfSearchBtn').addEventListener('click', ()=> openSearchPage('calf'));
@@ -15864,6 +15880,79 @@
     `;
   }
 
+  // ===== Shared Print / Export / Text buttons for reports (added Nov 17) =====
+  // Reads whatever table is on screen right now, so it always matches what you see (including a changed time frame).
+  function reportDataFromTable(root){
+    const t = root && root.querySelector('table');
+    if(!t) return null;
+    const headers = [...t.querySelectorAll('thead th')].map(th=>th.textContent.trim());
+    const rows = [...t.querySelectorAll('tbody tr')].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent.replace(/\s+/g,' ').trim()));
+    return rows.length ? { headers, rows } : null;
+  }
+  function printReportData(title, data){
+    const th = data.headers.map(h=>`<th style="text-align:left;padding:6px;border-bottom:2px solid #000;">${escapeHtml(h)}</th>`).join('');
+    const tr = data.rows.map(r=>`<tr>${r.map(c=>`<td style="padding:6px;border-bottom:1px solid #ccc;">${escapeHtml(c)}</td>`).join('')}</tr>`).join('');
+    document.getElementById('printListOutput').innerHTML = `
+      <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
+        <h2 style="margin:0 0 4px;">Farnan Cattle Co. — ${escapeHtml(title)}</h2>
+        <div style="font-size:13px;color:#555;margin-bottom:16px;">Printed ${fmtDate(todayLocal())}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>
+      </div>`;
+    document.body.classList.add('printing-list');
+    requestAnimationFrame(()=> requestAnimationFrame(()=> window.print()));
+  }
+  async function exportReportData(title, data){
+    if(typeof ExcelJS === 'undefined'){ showToast('Could not load spreadsheet library'); return; }
+    try{
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet(title.replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,30));
+      ws.addRow(data.headers);
+      ws.getRow(1).font = { bold:true };
+      data.rows.forEach(r=> ws.addRow(r));
+      ws.columns.forEach(col=>{ col.width = 18; });
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type:'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') + '-' + todayLocal() + '.xlsx';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Exported');
+    }catch(e){ showToast('Export failed — try again'); }
+  }
+  function textReportData(title, data){
+    const entries = data.rows.map((r,i)=>({ id:i, line: (data.lines && data.lines[i]) || r.filter(Boolean).join(' — ') }));
+    sendTextListModal(title, entries, null);
+  }
+  function reportOutputButtonsHtml(){
+    return `<button class="btn btn-outline" data-report-out="print">🖨️ Print</button>
+      <button class="btn btn-outline" data-report-out="export">📊 Export</button>
+      <button class="btn btn-outline" data-report-out="text">✉️ Text</button>`;
+  }
+  // getData: function returning {headers, rows, lines?} or null. title: string or function.
+  function wireReportOutputButtons(root, title, getData){
+    root.querySelectorAll('[data-report-out]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const data = getData();
+        if(!data){ showToast('Nothing in this report yet'); return; }
+        const t = (typeof title === 'function') ? title() : title;
+        const kind = btn.dataset.reportOut;
+        if(kind === 'print') printReportData(t, data);
+        else if(kind === 'export') exportReportData(t, data);
+        else textReportData(t, data);
+      });
+    });
+  }
+  // For report pop-ups: puts the three buttons in a row just above the Close row.
+  function addReportOutputRow(modal, title, tableContainerSel){
+    const row = document.createElement('div');
+    row.className = 'modal-actions';
+    row.innerHTML = reportOutputButtonsHtml();
+    const closeRow = modal.querySelector('.modal-actions');
+    closeRow.parentNode.insertBefore(row, closeRow);
+    wireReportOutputButtons(row, title, ()=> reportDataFromTable(modal.querySelector(tableContainerSel)));
+  }
+
   function reportCardModal(title, cowList, headerCells, rowsHtml, reopenFn, note){
     const modal = openModal(`
       <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -16799,6 +16888,7 @@
     }
     modal.querySelector('#closeOpenCowsBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+    addReportOutputRow(modal, 'Open Cows', '#openCowsTable');
   }
 
   function todaysActivityModal(){
@@ -16917,6 +17007,10 @@
     modal.querySelector('#todaysActivityTimeframe').addEventListener('change', refresh);
     modal.querySelector('#closeTodaysActivityBtn').addEventListener('click', closeModal);
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
+    addReportOutputRow(modal, ()=>{
+      const sel = modal.querySelector('#todaysActivityTimeframe');
+      return "Today's Activity — " + sel.options[sel.selectedIndex].text;
+    }, '#todaysActivityTable');
   }
 
   function dueSoonEntries(){

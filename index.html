@@ -365,6 +365,8 @@
      TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
      and delete the one <div id="desktopWelcome"> line near the top of the page body. */
   .menu-off{display:none !important;}
+  #homeQuickSearchMicBtn{background:linear-gradient(135deg, #2E88C4, #0C5A8E);font-size:24px;line-height:1;}
+  #homeQuickSearchMicBtn span{font-size:14px !important;font-weight:700;text-transform:uppercase;line-height:1.1;}
   #desktopWelcome, .dsk-only, .dsk-find{display:none;}
   @media screen and (min-width:1100px) and (hover:hover) and (pointer:fine){
     body{background:#FFFFFF;}
@@ -2588,16 +2590,17 @@
     ['homeCalvedWrap','Calved'],['homeDueSoonWrap','Due Soon'],['homeCalvedSinceWrap','Calved Since'],['homeTodaysActivityWrap','Activity'],
     ['homeTagNeededWrap','Tag'],['homeFlaggedWrap','Flagged'],['homeOpenWrap','Open'],['homePregBtWrap','Preg BT'],
     ['homeTodoWrap','To Do'],['homeSellWrap','Sell'],['fieldCountBtn','Field Count'],['homeHerdTallyBtn','Herd Tally'],
-    ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register']
+    ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register'],['homeQuickSearchMicBtn','Voice']
   ];
   const MENU_MAX_MAIN = 11;
-  const MENU_DEFAULT_SUB = ['homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
+  const MENU_SYNC_ID = 'homeSyncHoldWrap';   // the green Sync box (number pad, top-left) can move to the More screen too
+  const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
   let menuPage = 'main';
   let menuRows = null, menuMoreBtn = null, menuBackBtn = null;
   try{
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
-    if(Array.isArray(saved)) menuSubIds = saved.filter(id=>MENU_ITEMS.some(m=>m[0]===id));
+    if(Array.isArray(saved)) menuSubIds = saved.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
   }catch(e){}
   function menuSave(){
     try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
@@ -2612,7 +2615,7 @@
     try{
       const arr = JSON.parse(raw);
       if(!Array.isArray(arr)) return;
-      menuSubIds = arr.filter(id=>MENU_ITEMS.some(m=>m[0]===id));
+      menuSubIds = arr.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
       try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
       renderHomeMenu();
     }catch(e){}
@@ -2631,6 +2634,14 @@
   function renderHomeMenu(){
     if(!menuRows){
       menuRows = ['homeCalvedWrap','homeTagNeededWrap','homeTodoWrap','vaultBtn'].map(id=>document.getElementById(id).parentNode);
+      // Voice button (say a cow number, or "mark 4008 calved"). Starts life as a tile in the last row, then moves like the others.
+      const mic = document.createElement('div');
+      mic.id = 'homeQuickSearchMicBtn';
+      mic.setAttribute('role','button'); mic.setAttribute('aria-label','Voice');
+      mic.style.cssText = document.getElementById('fieldCountBtn').style.cssText.replace(/background:[^;]*;/,'');
+      mic.innerHTML = '&#127908;<span>Voice</span>';
+      mic.addEventListener('click', ()=>homeVoiceSearch());
+      menuRows[3].appendChild(mic);
       menuMoreBtn = menuMakeNavBtn('⋯','More', ()=>{ menuPage = 'sub'; renderHomeMenu(); });
       menuBackBtn = menuMakeNavBtn('◂','Main', ()=>{ menuPage = 'main'; renderHomeMenu(); });
     }
@@ -2646,34 +2657,58 @@
     if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
     const seq = showIds.map(id=>document.getElementById(id));
+    const syncEl = document.getElementById(MENU_SYNC_ID), syncSlot = document.getElementById('homeSyncSlot');
+    if(desk || menuSubIds.indexOf(MENU_SYNC_ID) < 0){
+      syncEl.classList.remove('menu-off');
+      if(syncEl.parentNode !== syncSlot) syncSlot.appendChild(syncEl);
+      syncEl.style.minHeight = '0';
+    } else if(menuPage === 'sub'){
+      syncEl.classList.remove('menu-off');
+      syncEl.style.minHeight = '62px';
+      seq.unshift(syncEl);
+    } else {
+      syncEl.classList.add('menu-off');   // stays hidden on Main; its spot on the number pad is left blank
+    }
     if(!desk){
       if(menuPage === 'sub') seq.push(menuBackBtn);
       else if(menuSubIds.length) seq.push(menuMoreBtn);
+    }
+    // desktop has no number pad (you type the number), so Voice stays hidden there
+    document.getElementById('homeQuickSearchMicBtn').classList.toggle('menu-off', desk || document.getElementById('homeQuickSearchMicBtn').classList.contains('menu-off'));
+    // make extra rows if the More screen needs more than four
+    while(menuRows.length < Math.ceil(seq.length/4)){
+      const last = menuRows[menuRows.length-1];
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;padding-top:6px;';
+      last.parentNode.insertBefore(row, last.nextSibling);
+      menuRows.push(row);
     }
     let used = 0;
     seq.forEach((el, i)=>{ const r = menuRows[Math.floor(i/4)]; r.appendChild(el); used = Math.floor(i/4)+1; });
     menuRows.forEach((r, i)=>{
       r.classList.toggle('menu-off', i >= used && !desk ? true : false);
-      r.style.marginBottom = (i === used-1 || (desk && i === 3)) ? '12px' : '0';
+      r.style.marginBottom = (i === used-1 || (desk && i === menuRows.length-1)) ? '12px' : '0';
     });
   }
   function wireMenuSettings(modal){
     const list = modal.querySelector('#menuSetList'), msg = modal.querySelector('#menuSetMsg');
     if(!list) return;
-    list.innerHTML = MENU_ITEMS.map(m=>`
+    list.innerHTML = [[MENU_SYNC_ID,'Sync (number pad)']].concat(MENU_ITEMS).map(m=>`
       <label class="setting-row" for="menuSet_${m[0]}">
         <span>${m[1]}</span>
         <span class="switch"><input type="checkbox" id="menuSet_${m[0]}" data-id="${m[0]}" ${menuSubIds.indexOf(m[0])<0?'checked':''}/><span class="slider"></span></span>
       </label>`).join('');
     list.addEventListener('change', e=>{
       const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
-      if(cb.checked){
-        const mainCount = MENU_ITEMS.length - menuSubIds.length;
+      if(cb.checked && id !== MENU_SYNC_ID){
+        const mainCount = MENU_ITEMS.filter(m=>menuSubIds.indexOf(m[0]) < 0).length;
         if(mainCount >= MENU_MAX_MAIN){
           cb.checked = false;
           msg.textContent = 'Main is full (11 buttons). Turn another one off first.';
           return;
         }
+        menuSubIds = menuSubIds.filter(x=>x!==id);
+      } else if(cb.checked){
         menuSubIds = menuSubIds.filter(x=>x!==id);
       } else if(menuSubIds.indexOf(id) < 0){
         menuSubIds.push(id);

@@ -2543,6 +2543,7 @@
         rows.forEach(r=>{ map[r.key] = r.value; });
         hideLaBreeding = (map.hide_la_breeding_activity !== 'false');
         if(map.home_menu_sub != null && typeof menuApplySaved === 'function') menuApplySaved(map.home_menu_sub);
+        if(map.home_menu_order != null && typeof menuApplyOrder === 'function') menuApplyOrder(map.home_menu_order);
         try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
         syncLaToggle();
         if(typeof updateTodaysActivityBadge === 'function') updateTodaysActivityBadge();
@@ -2602,6 +2603,23 @@
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
     if(Array.isArray(saved)) menuSubIds = saved.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
   }catch(e){}
+  // Order of the buttons (set with the arrows in Settings). Saved on this device and in the database.
+  let menuOrder = MENU_ITEMS.map(m=>m[0]);
+  function menuFixOrder(arr){
+    const ids = MENU_ITEMS.map(m=>m[0]);
+    const out = (Array.isArray(arr) ? arr : []).filter((id,i,a)=>ids.indexOf(id) >= 0 && a.indexOf(id) === i);
+    ids.forEach(id=>{ if(out.indexOf(id) < 0) out.push(id); });
+    return out;
+  }
+  try{ menuOrder = menuFixOrder(JSON.parse(localStorage.getItem('champ_menu_order') || 'null')); }catch(e){}
+  function menuOrdered(){ return menuOrder.map(id=>MENU_ITEMS.filter(m=>m[0]===id)[0]); }
+  function menuApplyOrder(raw){
+    try{
+      menuOrder = menuFixOrder(JSON.parse(raw));
+      try{ localStorage.setItem('champ_menu_order', JSON.stringify(menuOrder)); }catch(e){}
+      renderHomeMenu();
+    }catch(e){}
+  }
   // If an older saved choice leaves more than 11 on Main (the new Sync/Voice buttons), move the newest buttons to More.
   function menuTrimMain(){
     ['homeQuickSearchMicBtn',MENU_SYNC_ID].forEach(id=>{
@@ -2616,6 +2634,11 @@
       method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'resolution=merge-duplicates,return=representation'}),
       body: JSON.stringify({ key:'home_menu_sub', value: JSON.stringify(menuSubIds), updated_at: new Date().toISOString() })
     }).catch(()=>{ showToast('Saved on this device only - no signal'); });
+    try{ localStorage.setItem('champ_menu_order', JSON.stringify(menuOrder)); }catch(e){}
+    api('/app_settings', {
+      method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'resolution=merge-duplicates,return=representation'}),
+      body: JSON.stringify({ key:'home_menu_order', value: JSON.stringify(menuOrder), updated_at: new Date().toISOString() })
+    }).catch(()=>{});
   }
   // called when the database choice arrives (loadAppSettings)
   function menuApplySaved(raw){
@@ -2655,7 +2678,7 @@
     }
     const desk = menuIsDesktop();
     const showIds = [];
-    MENU_ITEMS.forEach(m=>{
+    menuOrdered().forEach(m=>{
       const el = document.getElementById(m[0]);
       const inSub = menuSubIds.indexOf(m[0]) >= 0;
       const show = desk || (menuPage === 'sub' ? inSub : !inSub);
@@ -2692,11 +2715,41 @@
   function wireMenuSettings(modal){
     const list = modal.querySelector('#menuSetList'), msg = modal.querySelector('#menuSetMsg');
     if(!list) return;
-    list.innerHTML = MENU_ITEMS.map(m=>`
-      <label class="setting-row" for="menuSet_${m[0]}">
-        <span>${m[1]}</span>
-        <span class="switch"><input type="checkbox" id="menuSet_${m[0]}" data-id="${m[0]}" ${menuSubIds.indexOf(m[0])<0?'checked':''}/><span class="slider"></span></span>
-      </label>`).join('');
+    const arrowStyle = 'width:34px;height:34px;padding:0;font-size:16px;line-height:1;border:2px solid #0C5A8E;border-radius:8px;background:#fff;color:#0C5A8E;cursor:pointer;';
+    function rowHtml(m, first, last){
+      const on = menuSubIds.indexOf(m[0]) < 0;
+      return `<div class="setting-row" style="align-items:center;gap:8px;">
+        <span style="flex:1;min-width:0;">${m[1]}</span>
+        <button type="button" data-up="${m[0]}" style="${arrowStyle}${first?'opacity:.3;':''}" aria-label="Move ${m[1]} up">&#9650;</button>
+        <button type="button" data-down="${m[0]}" style="${arrowStyle}${last?'opacity:.3;':''}" aria-label="Move ${m[1]} down">&#9660;</button>
+        <label class="switch"><input type="checkbox" data-id="${m[0]}" ${on?'checked':''}/><span class="slider"></span></label>
+      </div>`;
+    }
+    function draw(){
+      const all = menuOrdered();
+      const main = all.filter(m=>menuSubIds.indexOf(m[0]) < 0), more = all.filter(m=>menuSubIds.indexOf(m[0]) >= 0);
+      const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#5C3A21;margin:12px 0 2px;">${t}</div>`;
+      list.innerHTML = head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
+        + main.map((m,i)=>rowHtml(m,i===0,i===main.length-1)).join('')
+        + head('MORE SCREEN')
+        + (more.length ? more.map((m,i)=>rowHtml(m,i===0,i===more.length-1)).join('') : '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:6px 0;">Nothing here yet.</div>');
+    }
+    function swapWithNeighbor(id, dir){
+      const grp = menuOrdered().filter(m=>(menuSubIds.indexOf(m[0]) >= 0) === (menuSubIds.indexOf(id) >= 0)).map(m=>m[0]);
+      const k = grp.indexOf(id), other = grp[k+dir];
+      if(!other) return;
+      const a = menuOrder.indexOf(id), b = menuOrder.indexOf(other);
+      menuOrder[a] = other; menuOrder[b] = id;
+    }
+    draw();
+    list.addEventListener('click', e=>{
+      const btn = e.target.closest('button'); if(!btn) return;
+      const up = btn.getAttribute('data-up'), down = btn.getAttribute('data-down');
+      if(!up && !down) return;
+      swapWithNeighbor(up || down, up ? -1 : 1);
+      msg.textContent = '';
+      menuSave(); menuPage = 'main'; renderHomeMenu(); draw();
+    });
     list.addEventListener('change', e=>{
       const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
       if(cb.checked){
@@ -2710,8 +2763,10 @@
       } else if(menuSubIds.indexOf(id) < 0){
         menuSubIds.push(id);
       }
+      // a button moved to the other screen lands at the end of that screen's list
+      menuOrder = menuOrder.filter(x=>x!==id); menuOrder.push(id);
       msg.textContent = '';
-      menuSave(); menuPage = 'main'; renderHomeMenu();
+      menuSave(); menuPage = 'main'; renderHomeMenu(); draw();
     });
   }
   renderHomeMenu();
@@ -2735,7 +2790,7 @@
           <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
         </label>
         <div style="font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:#0C5A8E;margin:14px 0 4px;">Home screen buttons</div>
-        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:6px;">On = shows on the Main screen. Off = moves to the More screen. Main holds up to 11 buttons. This is the same on every device.</div>
+        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:6px;">Use the arrows to move a button up or down. The switch picks Main (on) or More (off). Main holds up to 11 buttons. Same on every device.</div>
         <div id="menuSetMsg" style="font-family:Arial,sans-serif;font-size:13px;color:#8B2A1E;min-height:18px;"></div>
         <div id="menuSetList"></div>
         <div class="modal-actions"><button class="btn btn-barn btn-full" id="settingsCloseBtn">Close</button></div>

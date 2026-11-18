@@ -2540,6 +2540,7 @@
         const map = {};
         rows.forEach(r=>{ map[r.key] = r.value; });
         hideLaBreeding = (map.hide_la_breeding_activity !== 'false');
+        if(map.home_menu_sub != null && typeof menuApplySaved === 'function') menuApplySaved(map.home_menu_sub);
         try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
         syncLaToggle();
         if(typeof updateTodaysActivityBadge === 'function') updateTodaysActivityBadge();
@@ -2598,7 +2599,24 @@
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
     if(Array.isArray(saved)) menuSubIds = saved.filter(id=>MENU_ITEMS.some(m=>m[0]===id));
   }catch(e){}
-  function menuSave(){ try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){} }
+  function menuSave(){
+    try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
+    // also save in the database so every device shows the same buttons
+    api('/app_settings', {
+      method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'resolution=merge-duplicates,return=representation'}),
+      body: JSON.stringify({ key:'home_menu_sub', value: JSON.stringify(menuSubIds), updated_at: new Date().toISOString() })
+    }).catch(()=>{ showToast('Saved on this device only - no signal'); });
+  }
+  // called when the database choice arrives (loadAppSettings)
+  function menuApplySaved(raw){
+    try{
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) return;
+      menuSubIds = arr.filter(id=>MENU_ITEMS.some(m=>m[0]===id));
+      try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
+      renderHomeMenu();
+    }catch(e){}
+  }
   function menuIsDesktop(){ return window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').matches; }
   function menuMakeNavBtn(icon, label, onClick){
     const tile = document.getElementById('fieldCountBtn');
@@ -2685,7 +2703,7 @@
           <span class="switch"><input type="checkbox" id="showLaBreedingToggle"/><span class="slider"></span></span>
         </label>
         <div style="font-family:Arial,sans-serif;font-weight:700;font-size:14px;color:#0C5A8E;margin:14px 0 4px;">Home screen buttons</div>
-        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:6px;">On = shows on the Main screen. Off = moves to the More screen. Main holds up to 11 buttons. This is saved on this device only.</div>
+        <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-bottom:6px;">On = shows on the Main screen. Off = moves to the More screen. Main holds up to 11 buttons. This is the same on every device.</div>
         <div id="menuSetMsg" style="font-family:Arial,sans-serif;font-size:13px;color:#8B2A1E;min-height:18px;"></div>
         <div id="menuSetList"></div>
         <div class="modal-actions"><button class="btn btn-barn btn-full" id="settingsCloseBtn">Close</button></div>

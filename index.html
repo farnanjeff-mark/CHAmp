@@ -2587,7 +2587,7 @@
   // Main holds up to 11 of them plus the brown More button (12 boxes = 3 rows of 4).
   // The choice is saved on this device (localStorage). The top row (Profile, Utilities, Reports, Farm Ops) never moves.
   const MENU_ITEMS = [
-    ['homeCalvedWrap','Calved'],['homeDueSoonWrap','Due Soon'],['homeCalvedSinceWrap','Calved Since'],['homeTodaysActivityWrap','Activity'],
+    ['homeSyncHoldWrap','Sync'],['homeCalvedWrap','Calved'],['homeDueSoonWrap','Due Soon'],['homeCalvedSinceWrap','Calved Since'],['homeTodaysActivityWrap','Activity'],
     ['homeTagNeededWrap','Tag'],['homeFlaggedWrap','Flagged'],['homeOpenWrap','Open'],['homePregBtWrap','Preg BT'],
     ['homeTodoWrap','To Do'],['homeSellWrap','Sell'],['fieldCountBtn','Field Count'],['homeHerdTallyBtn','Herd Tally'],
     ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register'],['homeQuickSearchMicBtn','Voice']
@@ -2602,6 +2602,13 @@
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
     if(Array.isArray(saved)) menuSubIds = saved.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
   }catch(e){}
+  // If an older saved choice leaves more than 11 on Main (the new Sync/Voice buttons), move the newest buttons to More.
+  function menuTrimMain(){
+    ['homeQuickSearchMicBtn',MENU_SYNC_ID].forEach(id=>{
+      if(MENU_ITEMS.filter(m=>menuSubIds.indexOf(m[0]) < 0).length > MENU_MAX_MAIN && menuSubIds.indexOf(id) < 0) menuSubIds.push(id);
+    });
+  }
+  menuTrimMain();
   function menuSave(){
     try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
     // also save in the database so every device shows the same buttons
@@ -2616,6 +2623,7 @@
       const arr = JSON.parse(raw);
       if(!Array.isArray(arr)) return;
       menuSubIds = arr.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
+      menuTrimMain();
       try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
       renderHomeMenu();
     }catch(e){}
@@ -2657,24 +2665,15 @@
     if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
     const seq = showIds.map(id=>document.getElementById(id));
-    const syncEl = document.getElementById(MENU_SYNC_ID), syncSlot = document.getElementById('homeSyncSlot');
-    if(desk || menuSubIds.indexOf(MENU_SYNC_ID) < 0){
-      syncEl.classList.remove('menu-off');
-      if(syncEl.parentNode !== syncSlot) syncSlot.appendChild(syncEl);
-      syncEl.style.minHeight = '0';
-    } else if(menuPage === 'sub'){
-      syncEl.classList.remove('menu-off');
-      syncEl.style.minHeight = '62px';
-      seq.unshift(syncEl);
-    } else {
-      syncEl.classList.add('menu-off');   // stays hidden on Main; its spot on the number pad is left blank
-    }
+    // Sync is now a regular button (its old spot at the top-left of the number pad stays blank).
+    // Computer screen has no number pad, so Sync and Voice stay hidden there.
+    document.getElementById(MENU_SYNC_ID).style.minHeight = '62px';
     if(!desk){
       if(menuPage === 'sub') seq.push(menuBackBtn);
       else if(menuSubIds.length) seq.push(menuMoreBtn);
     }
     // desktop has no number pad (you type the number), so Voice stays hidden there
-    document.getElementById('homeQuickSearchMicBtn').classList.toggle('menu-off', desk || document.getElementById('homeQuickSearchMicBtn').classList.contains('menu-off'));
+    if(desk){ document.getElementById('homeQuickSearchMicBtn').classList.add('menu-off'); document.getElementById(MENU_SYNC_ID).classList.add('menu-off'); }
     // make extra rows if the More screen needs more than four
     while(menuRows.length < Math.ceil(seq.length/4)){
       const last = menuRows[menuRows.length-1];
@@ -2693,22 +2692,20 @@
   function wireMenuSettings(modal){
     const list = modal.querySelector('#menuSetList'), msg = modal.querySelector('#menuSetMsg');
     if(!list) return;
-    list.innerHTML = [[MENU_SYNC_ID,'Sync (number pad)']].concat(MENU_ITEMS).map(m=>`
+    list.innerHTML = MENU_ITEMS.map(m=>`
       <label class="setting-row" for="menuSet_${m[0]}">
         <span>${m[1]}</span>
         <span class="switch"><input type="checkbox" id="menuSet_${m[0]}" data-id="${m[0]}" ${menuSubIds.indexOf(m[0])<0?'checked':''}/><span class="slider"></span></span>
       </label>`).join('');
     list.addEventListener('change', e=>{
       const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
-      if(cb.checked && id !== MENU_SYNC_ID){
+      if(cb.checked){
         const mainCount = MENU_ITEMS.filter(m=>menuSubIds.indexOf(m[0]) < 0).length;
         if(mainCount >= MENU_MAX_MAIN){
           cb.checked = false;
           msg.textContent = 'Main is full (11 buttons). Turn another one off first.';
           return;
         }
-        menuSubIds = menuSubIds.filter(x=>x!==id);
-      } else if(cb.checked){
         menuSubIds = menuSubIds.filter(x=>x!==id);
       } else if(menuSubIds.indexOf(id) < 0){
         menuSubIds.push(id);

@@ -365,6 +365,10 @@
      TO SWITCH BACK: delete everything from this comment through the line "END DESKTOP LAYOUT",
      and delete the one <div id="desktopWelcome"> line near the top of the page body. */
   .menu-off{display:none !important;}
+  /* Phone: every home button (top row, Main and More screens) is exactly the same height so nothing grows on iPhone. */
+  @media screen and (max-width:1099px){
+    #homeView .home-btn-row > *{height:62px !important;min-height:62px !important;padding-top:4px !important;padding-bottom:4px !important;box-sizing:border-box;overflow:hidden;}
+  }
   #homeQuickSearchMicBtn{background:linear-gradient(135deg, #2E88C4, #0C5A8E);font-size:24px;line-height:1;}
   #homeQuickSearchMicBtn span{font-size:14px !important;font-weight:700;text-transform:uppercase;line-height:1.1;}
   #desktopWelcome, .dsk-only, .dsk-find{display:none;}
@@ -581,7 +585,7 @@
   <div class="view" id="homeView">
     <div style="text-align:center;padding:4px 10px;">
       <div class="dsk-only dsk-name">Farnan Cattle Company</div>
-      <div style="display:flex;gap:6px;margin:-15px 0 25px;">
+      <div class="home-btn-row" style="display:flex;gap:6px;margin:-15px 0 25px;">
         <button class="btn" id="homeProfileBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">🐮</span>Profile</button>
         <button class="btn" id="homeUtilitiesBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">🛠️</span>Utilities</button>
         <button class="btn" id="homeReportsBtn" style="min-height:62px;box-sizing:border-box;background:linear-gradient(135deg, #2E88C4, #0C5A8E);color:#fff;border-color:#fff;border-width:2px;flex:1 1 0;min-width:0;padding:8px 2px;font-size:14px;letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;"><span style="font-size:24px;line-height:1;">📊</span>Reports</button>
@@ -2665,6 +2669,7 @@
   function renderHomeMenu(){
     if(!menuRows){
       menuRows = ['homeCalvedWrap','homeTagNeededWrap','homeTodoWrap','vaultBtn'].map(id=>document.getElementById(id).parentNode);
+      menuRows.forEach(r=>r.classList.add('home-btn-row'));
       // Voice button (say a cow number, or "mark 4008 calved"). Starts life as a tile in the last row, then moves like the others.
       const mic = document.createElement('div');
       mic.id = 'homeQuickSearchMicBtn';
@@ -2702,6 +2707,7 @@
       const last = menuRows[menuRows.length-1];
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;gap:6px;padding-top:6px;';
+      row.className = 'home-btn-row';
       last.parentNode.insertBefore(row, last.nextSibling);
       menuRows.push(row);
     }

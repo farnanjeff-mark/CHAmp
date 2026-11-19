@@ -24,7 +24,7 @@
     --muted:#6b6350;--muted2:#8a8163;--muted3:#a08f6b;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:#CBBFAE;color:var(--ink);font-family:'Georgia','Iowan Old Style',serif;-webkit-font-smoothing:antialiased;}
+  body{margin:0;background:#CBBFAE;color:var(--ink);font-family:Arial,sans-serif;-webkit-font-smoothing:antialiased;}
   .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#CBBFAE;}
 
   .header{padding:22px 28px 20px;}
@@ -11938,7 +11938,7 @@
     `).join('');
     const hasSplitAddress = bill.address_street || bill.address_city_state || bill.address_zip;
     document.getElementById('printListOutput').innerHTML = `
-      <div style="padding:32px;font-family:Georgia,'Iowan Old Style',serif;color:#2B2620;max-width:600px;margin:0 auto;">
+      <div style="padding:32px;font-family:Arial,sans-serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
           <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#5C3A21;margin:0 0 6px;">${escapeHtml(bill.farm_name||'')}</div>
           ${hasSplitAddress ? `
@@ -12920,7 +12920,7 @@
     const farmZip = (hayingBillSettings && hayingBillSettings.address_zip) || '';
     const headCount = strawLines.reduce((s,l)=>s+l.quantity,0);
     return `
-      <div style="padding:32px;font-family:Georgia,'Iowan Old Style',serif;color:#2B2620;max-width:600px;margin:0 auto;">
+      <div style="padding:32px;font-family:Arial,sans-serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
           <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5C3A21;margin:0 0 6px;">${escapeHtml(farmName)}</div>
           ${farmStreet ? `<div style="font-family:Arial,sans-serif;font-size:14px;color:#6b6350;">${escapeHtml(farmStreet)}</div>` : ''}

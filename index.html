@@ -2610,7 +2610,8 @@
   // left out of Main, More and the Settings list. Their saved place is kept, so they come back on a wide screen.
   const MENU_WIDE_ONLY = ['checkbookBtn'];
   const MENU_WIDE_MIN_WIDTH = 1000;
-  function menuHidden(id){ return window.innerWidth < MENU_WIDE_MIN_WIDTH && MENU_WIDE_ONLY.indexOf(id) >= 0; }
+  function menuIsComputer(){ return window.innerWidth >= MENU_WIDE_MIN_WIDTH && window.matchMedia('(hover:hover) and (pointer:fine)').matches; }
+  function menuHidden(id){ return !menuIsComputer() && MENU_WIDE_ONLY.indexOf(id) >= 0; }
   const MENU_SYNC_ID = 'homeSyncHoldWrap';   // the green Sync box (number pad, top-left) can move to the More screen too
   const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
@@ -21300,7 +21301,7 @@ $("impGo").onclick = () => {
   // The register is laid out for a computer screen, so narrow screens (phones) only get a short message.
   var DESKTOP_MIN_WIDTH = 1000, narrowT = null;
   function onOpenClick(){
-    if(window.innerWidth < DESKTOP_MIN_WIDTH){
+    if(window.innerWidth < DESKTOP_MIN_WIDTH || !window.matchMedia('(hover:hover) and (pointer:fine)').matches){
       var t = $('toast');
       if(t){
         t.textContent = 'Open CHAmp on a computer to use the Checkbook.';

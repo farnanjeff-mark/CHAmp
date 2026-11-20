@@ -371,6 +371,8 @@
   /* Phone: every home button (top row, Main and More screens, number pad) is exactly the same height (70) so nothing grows on iPhone. */
   @media screen and (max-width:1099px){
     #homeView .home-btn-row > *{height:70px !important;min-height:70px !important;padding-top:4px !important;padding-bottom:4px !important;box-sizing:border-box;overflow:hidden;}
+    /* Phone: bring the bottom buttons up closer to the number pad (was 32px of space above them). */
+    #homeView .home-btn-row.home-row-first{padding-top:8px !important;}
   }
   #homeQuickSearchMicBtn{background:linear-gradient(135deg, #2E88C4, #0C5A8E);font-size:24px;line-height:1;}
   #homeQuickSearchMicBtn span{font-size:14px !important;font-weight:700;text-transform:uppercase;line-height:1.1;}
@@ -2723,7 +2725,7 @@
       menuRows[3].appendChild(mic);
       menuPinnedRow = document.createElement('div');
       menuPinnedRow.className = 'home-btn-row menu-off';
-      menuPinnedRow.style.cssText = 'display:flex;gap:6px;margin:-19px 0 25px;';
+      menuPinnedRow.style.cssText = 'display:flex;gap:6px;margin:-19px 0 12px;';
       const topRow = document.querySelector('#homeView .home-top-row');
       topRow.parentNode.insertBefore(menuPinnedRow, topRow.nextSibling);
       menuMoreBtn = menuMakeNavBtn('⋯','More', ()=>{ menuPage = 'sub'; renderHomeMenu(); });

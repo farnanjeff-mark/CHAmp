@@ -2555,6 +2555,7 @@
         rows.forEach(r=>{ map[r.key] = r.value; });
         hideLaBreeding = (map.hide_la_breeding_activity !== 'false');
         if(map.home_menu_sub != null && typeof menuApplySaved === 'function') menuApplySaved(map.home_menu_sub);
+        else if(typeof menuPinnedMigrate === 'function' && menuPinnedMigrate()){ renderHomeMenu(); menuSave(); }
         if(map.home_menu_order != null && typeof menuApplyOrder === 'function') menuApplyOrder(map.home_menu_order);
         try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
         syncLaToggle();
@@ -2606,6 +2607,10 @@
     ['vaultBtn','Vault'],['homeBulkEntryBtn','Bulk Entry'],['homeInHeatWrap','In Heat'],['checkbookBtn','Register'],['homeQuickSearchMicBtn','Voice']
   ];
   const MENU_MAX_MAIN = 11;
+  // Always-on row (phone only): these four sit in a fixed row under the top four buttons, on both Main and More.
+  // They are not part of the Main/More choices (Settings leaves them out). On a computer they stay where they were.
+  const MENU_PINNED = ['homeQuickSearchMicBtn','vaultBtn','homeHerdTallyBtn','homeTodaysActivityWrap'];
+  function menuIsPinned(id){ return MENU_PINNED.indexOf(id) >= 0; }
   // Buttons that only appear on a wide screen (a computer, or a tablet held sideways). On a phone they are
   // left out of Main, More and the Settings list. Their saved place is kept, so they come back on a wide screen.
   const MENU_WIDE_ONLY = ['checkbookBtn'];
@@ -2616,7 +2621,7 @@
   const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
   let menuPage = 'main';
-  let menuRows = null, menuMoreBtn = null, menuBackBtn = null, menuBig = null, menuBigRows = null;
+  let menuRows = null, menuPinnedRow = null, menuMoreBtn = null, menuBackBtn = null, menuBig = null, menuBigRows = null;
   try{
     const saved = JSON.parse(localStorage.getItem('champ_sub_menu') || 'null');
     if(Array.isArray(saved)) menuSubIds = saved.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
@@ -2640,11 +2645,25 @@
   }
   // If an older saved choice leaves more than 11 on Main (the new Sync/Voice buttons), move the newest buttons to More.
   function menuTrimMain(){
-    ['homeQuickSearchMicBtn',MENU_SYNC_ID].forEach(id=>{
-      if(MENU_ITEMS.filter(m=>menuSubIds.indexOf(m[0]) < 0).length > MENU_MAX_MAIN && menuSubIds.indexOf(id) < 0) menuSubIds.push(id);
+    [MENU_SYNC_ID].forEach(id=>{
+      if(MENU_ITEMS.filter(m=>!menuIsPinned(m[0]) && menuSubIds.indexOf(m[0]) < 0).length > MENU_MAX_MAIN && menuSubIds.indexOf(id) < 0) menuSubIds.push(id);
     });
   }
   menuTrimMain();
+  // One time: the four pinned buttons free up their old spots, so bring Calved Since and In Heat onto Main if there is room.
+  function menuPinnedMigrate(){
+    let done = false;
+    try{ done = localStorage.getItem('champ_pinned_row_v1') === '1'; }catch(e){}
+    if(done) return false;
+    let changed = false;
+    ['homeCalvedSinceWrap','homeInHeatWrap'].forEach(id=>{
+      const mainCount = MENU_ITEMS.filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]) && menuSubIds.indexOf(m[0]) < 0).length;
+      const k = menuSubIds.indexOf(id);
+      if(k >= 0 && mainCount < MENU_MAX_MAIN){ menuSubIds.splice(k,1); changed = true; }
+    });
+    try{ localStorage.setItem('champ_pinned_row_v1','1'); }catch(e){}
+    return changed;
+  }
   function menuSave(){
     try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
     // also save in the database so every device shows the same buttons
@@ -2665,8 +2684,10 @@
       if(!Array.isArray(arr)) return;
       menuSubIds = arr.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
       menuTrimMain();
+      const moved = menuPinnedMigrate();
       try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
       renderHomeMenu();
+      if(moved) menuSave();
     }catch(e){}
   }
   function menuIsDesktop(){ return window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').matches; }
@@ -2693,6 +2714,11 @@
       mic.innerHTML = '&#127908;<span>Voice</span>';
       mic.addEventListener('click', ()=>homeVoiceSearch());
       menuRows[3].appendChild(mic);
+      menuPinnedRow = document.createElement('div');
+      menuPinnedRow.className = 'home-btn-row menu-off';
+      menuPinnedRow.style.cssText = 'display:flex;gap:6px;margin:-19px 0 25px;';
+      const topRow = document.querySelector('#homeView .home-top-row');
+      topRow.parentNode.insertBefore(menuPinnedRow, topRow.nextSibling);
       menuMoreBtn = menuMakeNavBtn('⋯','More', ()=>{ menuPage = 'sub'; renderHomeMenu(); });
       menuBackBtn = menuMakeNavBtn('◂','Main', ()=>{ menuPage = 'main'; renderHomeMenu(); });
     }
@@ -2701,9 +2727,10 @@
     menuOrdered().forEach(m=>{
       const el = document.getElementById(m[0]);
       const inSub = menuSubIds.indexOf(m[0]) >= 0;
-      const show = !menuHidden(m[0]) && (desk || (menuPage === 'sub' ? inSub : !inSub));
+      const pinnedHere = !desk && menuIsPinned(m[0]);
+      const show = !menuHidden(m[0]) && (pinnedHere || desk || (menuPage === 'sub' ? inSub : !inSub));
       el.classList.toggle('menu-off', !show);
-      if(show) showIds.push(m[0]);
+      if(show && !pinnedHere) showIds.push(m[0]);
     });
     if(menuMoreBtn.parentNode) menuMoreBtn.parentNode.removeChild(menuMoreBtn);
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
@@ -2728,6 +2755,9 @@
     }
     // desktop has no number pad (you type the number), so Voice stays hidden there
     if(desk){ document.getElementById('homeQuickSearchMicBtn').classList.add('menu-off'); document.getElementById(MENU_SYNC_ID).classList.add('menu-off'); }
+    // phone: the four pinned buttons live in the fixed row; computer: that row is hidden
+    menuPinnedRow.classList.toggle('menu-off', desk);
+    if(!desk) MENU_PINNED.forEach(id=>menuPinnedRow.appendChild(document.getElementById(id)));
     // make extra rows if the More screen needs more than four
     while(menuRows.length < Math.ceil(seq.length/4)){
       const last = menuRows[menuRows.length-1];
@@ -2758,16 +2788,16 @@
       </div>`;
     }
     function draw(){
-      const all = menuOrdered().filter(m=>!menuHidden(m[0]));
+      const all = menuOrdered().filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]));
       const main = all.filter(m=>menuSubIds.indexOf(m[0]) < 0), more = all.filter(m=>menuSubIds.indexOf(m[0]) >= 0);
       const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#5C3A21;margin:12px 0 2px;">${t}</div>`;
-      list.innerHTML = head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
+      list.innerHTML = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:4px 0 2px;">Voice, Vault, Herd Tally and Activity stay in a fixed row at the top of the phone screen.</div>' + head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
         + main.map((m,i)=>rowHtml(m,i===0,i===main.length-1)).join('')
         + head('MORE SCREEN')
         + (more.length ? more.map((m,i)=>rowHtml(m,i===0,i===more.length-1)).join('') : '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:6px 0;">Nothing here yet.</div>');
     }
     function swapWithNeighbor(id, dir){
-      const grp = menuOrdered().filter(m=>!menuHidden(m[0]) && (menuSubIds.indexOf(m[0]) >= 0) === (menuSubIds.indexOf(id) >= 0)).map(m=>m[0]);
+      const grp = menuOrdered().filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]) && (menuSubIds.indexOf(m[0]) >= 0) === (menuSubIds.indexOf(id) >= 0)).map(m=>m[0]);
       const k = grp.indexOf(id), other = grp[k+dir];
       if(!other) return;
       const a = menuOrder.indexOf(id), b = menuOrder.indexOf(other);
@@ -2785,7 +2815,7 @@
     list.addEventListener('change', e=>{
       const cb = e.target; const id = cb.getAttribute('data-id'); if(!id) return;
       if(cb.checked){
-        const mainCount = MENU_ITEMS.filter(m=>!menuHidden(m[0]) && menuSubIds.indexOf(m[0]) < 0).length;
+        const mainCount = MENU_ITEMS.filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]) && menuSubIds.indexOf(m[0]) < 0).length;
         if(mainCount >= MENU_MAX_MAIN){
           cb.checked = false;
           msg.textContent = 'Main is full (11 buttons). Turn another one off first.';

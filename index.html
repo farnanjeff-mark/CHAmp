@@ -2555,8 +2555,8 @@
         rows.forEach(r=>{ map[r.key] = r.value; });
         hideLaBreeding = (map.hide_la_breeding_activity !== 'false');
         if(map.home_menu_sub != null && typeof menuApplySaved === 'function') menuApplySaved(map.home_menu_sub);
-        else if(typeof menuPinnedMigrate === 'function' && menuPinnedMigrate()){ renderHomeMenu(); menuSave(); }
         if(map.home_menu_order != null && typeof menuApplyOrder === 'function') menuApplyOrder(map.home_menu_order);
+        if(typeof menuPinnedMigrate === 'function' && menuPinnedMigrate()){ renderHomeMenu(); menuSave(); }
         try{ localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(map)); }catch(e){}
         syncLaToggle();
         if(typeof updateTodaysActivityBadge === 'function') updateTodaysActivityBadge();
@@ -2609,7 +2609,7 @@
   const MENU_MAX_MAIN = 11;
   // Always-on row (phone only): these four sit in a fixed row under the top four buttons, on both Main and More.
   // They are not part of the Main/More choices (Settings leaves them out). On a computer they stay where they were.
-  const MENU_PINNED = ['homeQuickSearchMicBtn','vaultBtn','homeHerdTallyBtn','homeTodaysActivityWrap'];
+  const MENU_PINNED = ['homeQuickSearchMicBtn','vaultBtn','homeTodoWrap','homeTodaysActivityWrap'];
   function menuIsPinned(id){ return MENU_PINNED.indexOf(id) >= 0; }
   // Buttons that only appear on a wide screen (a computer, or a tablet held sideways). On a phone they are
   // left out of Main, More and the Settings list. Their saved place is kept, so they come back on a wide screen.
@@ -2654,14 +2654,23 @@
   function menuPinnedMigrate(){
     let done = false;
     try{ done = localStorage.getItem('champ_pinned_row_v1') === '1'; }catch(e){}
-    if(done) return false;
     let changed = false;
-    ['homeCalvedSinceWrap','homeInHeatWrap'].forEach(id=>{
+    if(!done) ['homeCalvedSinceWrap','homeInHeatWrap'].forEach(id=>{
       const mainCount = MENU_ITEMS.filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]) && menuSubIds.indexOf(m[0]) < 0).length;
       const k = menuSubIds.indexOf(id);
       if(k >= 0 && mainCount < MENU_MAX_MAIN){ menuSubIds.splice(k,1); changed = true; }
     });
     try{ localStorage.setItem('champ_pinned_row_v1','1'); }catch(e){}
+    // v2: To Do and Herd Tally swapped places - Herd Tally takes To Do's old spot in the grid
+    let done2 = false;
+    try{ done2 = localStorage.getItem('champ_pinned_row_v2') === '1'; }catch(e){}
+    if(!done2){
+      const a = menuOrder.indexOf('homeTodoWrap'), b = menuOrder.indexOf('homeHerdTallyBtn');
+      if(a >= 0 && b >= 0){ menuOrder[a] = 'homeHerdTallyBtn'; menuOrder[b] = 'homeTodoWrap'; changed = true; }
+      const k = menuSubIds.indexOf('homeHerdTallyBtn');
+      if(k >= 0){ menuSubIds.splice(k,1); changed = true; }
+      try{ localStorage.setItem('champ_pinned_row_v2','1'); }catch(e){}
+    }
     return changed;
   }
   function menuSave(){
@@ -2684,10 +2693,8 @@
       if(!Array.isArray(arr)) return;
       menuSubIds = arr.filter(id=>id===MENU_SYNC_ID || MENU_ITEMS.some(m=>m[0]===id));
       menuTrimMain();
-      const moved = menuPinnedMigrate();
       try{ localStorage.setItem('champ_sub_menu', JSON.stringify(menuSubIds)); }catch(e){}
       renderHomeMenu();
-      if(moved) menuSave();
     }catch(e){}
   }
   function menuIsDesktop(){ return window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)').matches; }
@@ -2791,7 +2798,7 @@
       const all = menuOrdered().filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]));
       const main = all.filter(m=>menuSubIds.indexOf(m[0]) < 0), more = all.filter(m=>menuSubIds.indexOf(m[0]) >= 0);
       const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#5C3A21;margin:12px 0 2px;">${t}</div>`;
-      list.innerHTML = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:4px 0 2px;">Voice, Vault, Herd Tally and Activity stay in a fixed row at the top of the phone screen.</div>' + head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
+      list.innerHTML = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:4px 0 2px;">Voice, Vault, To Do and Activity stay in a fixed row at the top of the phone screen.</div>' + head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
         + main.map((m,i)=>rowHtml(m,i===0,i===main.length-1)).join('')
         + head('MORE SCREEN')
         + (more.length ? more.map((m,i)=>rowHtml(m,i===0,i===more.length-1)).join('') : '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:6px 0;">Nothing here yet.</div>');

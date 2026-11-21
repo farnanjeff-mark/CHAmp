@@ -3735,15 +3735,19 @@
       const place = [b.city, [b.state, b.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
       return [place, b.phone].filter(Boolean).join(' · ');
     }
+    function addrLine(b){
+      return b.address || '';
+    }
     function draw(){
       const sorted = [...buyersList].sort((a,b)=>a.name.localeCompare(b.name));
       box.innerHTML = sorted.length ? sorted.map(b=>`
         <div class="cow-card buyer-row" data-id="${escapeHtml(b.id)}" style="cursor:pointer;">
           <div>
             <div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}</div>
+            ${addrLine(b) ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-top:2px;">${escapeHtml(addrLine(b))}</div>` : ''}
             ${line2(b) ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-top:2px;">${escapeHtml(line2(b))}</div>` : ''}
           </div>
-          <div style="color:#2E88C4;font-size:22px;">&rsaquo;</div>
+          <div title="Edit" style="color:#2E88C4;font-size:20px;">&#9998;</div>
         </div>`).join('') : '<div class="empty">No buyers in the list yet.</div>';
       box.querySelectorAll('.buyer-row').forEach(row=>{
         row.addEventListener('click', ()=> buyerForm(buyersList.find(b=>b.id === row.dataset.id)));

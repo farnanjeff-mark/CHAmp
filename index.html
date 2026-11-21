@@ -3718,54 +3718,100 @@
       }
     });
   }
-  // Buyers list (Utilities > Reference Lists > Buyers): add or remove names for the Sold pop-up dropdown.
+  // Buyers list (Utilities > Reference Lists > Buyers): name plus address, city, state, zip and phone.
+  // Only the name shows in the Sold pop-up dropdown. Tap a buyer to edit or remove; Add Buyer opens a blank form.
   async function buyersModal(){
     await ensureBuyers(true);
     const modal = openModal(`
       <div class="modal-title">Buyers</div>
       <div id="buyersListBox"></div>
-      <div class="field" style="margin-top:12px;">
-        <label>Add buyer</label>
-        <input type="text" id="newBuyerName" placeholder="e.g. Clarinda Livestock"/>
-      </div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="closeBuyers">Close</button>
         <button class="btn btn-barn" id="addBuyerBtn">Add Buyer</button>
       </div>
     `);
     const box = modal.querySelector('#buyersListBox');
+    function line2(b){
+      const place = [b.city, [b.state, b.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+      return [place, b.phone].filter(Boolean).join(' · ');
+    }
     function draw(){
       const sorted = [...buyersList].sort((a,b)=>a.name.localeCompare(b.name));
       box.innerHTML = sorted.length ? sorted.map(b=>`
-        <div class="cow-card" style="cursor:default;">
-          <div><div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}</div></div>
-          <button class="remove-buyer-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" title="Remove buyer" style="background:none;border:none;color:#a08f6b;font-size:22px;cursor:pointer;padding:4px 8px;">&times;</button>
+        <div class="cow-card buyer-row" data-id="${escapeHtml(b.id)}" style="cursor:pointer;">
+          <div>
+            <div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}</div>
+            ${line2(b) ? `<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin-top:2px;">${escapeHtml(line2(b))}</div>` : ''}
+          </div>
+          <div style="color:#2E88C4;font-size:22px;">&rsaquo;</div>
         </div>`).join('') : '<div class="empty">No buyers in the list yet.</div>';
-      box.querySelectorAll('.remove-buyer-btn').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(!confirm(`Remove "${btn.dataset.name}" from the buyer list? Sales already saved with this buyer keep the name.`)) return;
-          try{
-            await api('/buyers?id=eq.' + encodeURIComponent(btn.dataset.id), { method:'DELETE' });
-            buyersList = buyersList.filter(b=>b.id !== btn.dataset.id);
-            draw(); showToast('Buyer removed');
-          }catch(e){ showToast('Could not remove — try again'); }
-        });
+      box.querySelectorAll('.buyer-row').forEach(row=>{
+        row.addEventListener('click', ()=> buyerForm(buyersList.find(b=>b.id === row.dataset.id)));
       });
     }
     draw();
     modal.querySelector('#closeBuyers').addEventListener('click', closeModal);
-    modal.querySelector('#addBuyerBtn').addEventListener('click', async ()=>{
-      const input = modal.querySelector('#newBuyerName');
-      const name = input.value.trim();
-      if(!name){ showToast('Enter a buyer name'); return; }
-      if(buyersList.some(b=>b.name.toLowerCase() === name.toLowerCase())){ showToast('That buyer is already in the list'); return; }
-      try{
-        await addBuyerIfNew(name);
-        input.value = '';
-        draw(); showToast('Buyer added');
-      }catch(e){ showToast('Could not add — try again'); }
-    });
+    modal.querySelector('#addBuyerBtn').addEventListener('click', ()=> buyerForm(null));
+    function buyerForm(existing){
+      const e = existing || {};
+      const f = openModal(`
+        <div class="modal-title">${existing ? 'Edit Buyer' : 'Add Buyer'}</div>
+        <div class="field"><label>Name</label><input type="text" id="buyerName" value="${escapeHtml(e.name || '')}" placeholder="e.g. Clarinda Livestock"/></div>
+        <div class="field"><label>Address</label><input type="text" id="buyerAddress" value="${escapeHtml(e.address || '')}"/></div>
+        <div class="field"><label>City</label><input type="text" id="buyerCity" value="${escapeHtml(e.city || '')}"/></div>
+        <div style="display:flex;gap:10px;">
+          <div class="field" style="flex:1;"><label>State</label><input type="text" id="buyerState" maxlength="2" autocapitalize="characters" value="${escapeHtml(e.state || '')}" placeholder="MO"/></div>
+          <div class="field" style="flex:1.4;"><label>Zip</label><input type="text" id="buyerZip" inputmode="numeric" maxlength="10" value="${escapeHtml(e.zip || '')}"/></div>
+        </div>
+        <div class="field"><label>Phone</label><input type="tel" id="buyerPhone" value="${escapeHtml(e.phone || '')}" placeholder="(660) 555-0123"/></div>
+        <div class="modal-actions">
+          ${existing ? '<button class="btn btn-outline" id="buyerRemoveBtn">Remove</button>' : '<button class="btn btn-outline" id="buyerCancelBtn">Cancel</button>'}
+          <button class="btn btn-barn" id="buyerSaveBtn">Save</button>
+        </div>
+      `);
+      const cancel = f.querySelector('#buyerCancelBtn');
+      if(cancel) cancel.addEventListener('click', closeModal);
+      const rm = f.querySelector('#buyerRemoveBtn');
+      if(rm) rm.addEventListener('click', async ()=>{
+        if(!confirm(`Remove "${e.name}" from the buyer list? Sales already saved with this buyer keep the name.`)) return;
+        try{
+          await api('/buyers?id=eq.' + encodeURIComponent(e.id), { method:'DELETE' });
+          buyersList = buyersList.filter(b=>b.id !== e.id);
+          closeModal(); draw(); showToast('Buyer removed');
+        }catch(err){ showToast('Could not remove — try again'); }
+      });
+      f.querySelector('#buyerSaveBtn').addEventListener('click', async ()=>{
+        const get = id => f.querySelector('#' + id).value.trim();
+        const name = get('buyerName');
+        if(!name){ showToast('Enter a buyer name'); return; }
+        if(buyersList.some(b=>b.id !== e.id && b.name.toLowerCase() === name.toLowerCase())){ showToast('That buyer is already in the list'); return; }
+        const body = { name, address: get('buyerAddress') || null, city: get('buyerCity') || null, state: get('buyerState').toUpperCase() || null, zip: get('buyerZip') || null, phone: get('buyerPhone') || null };
+        const btn = f.querySelector('#buyerSaveBtn'); btn.disabled = true;
+        try{
+          if(existing){
+            const upd = await api('/buyers?id=eq.' + encodeURIComponent(e.id), { method:'PATCH', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}), body: JSON.stringify(body) });
+            const idx = buyersList.findIndex(b=>b.id === e.id);
+            if(idx !== -1 && upd && upd[0]) buyersList[idx] = upd[0];
+            // keep the name on past sales in step if the buyer was renamed
+            if(e.name !== name){
+              try{
+                await api('/cows?sold_to=eq.' + encodeURIComponent(e.name), { method:'PATCH', body: JSON.stringify({ sold_to: name }) });
+                await api('/calvings?sold_to=eq.' + encodeURIComponent(e.name), { method:'PATCH', body: JSON.stringify({ sold_to: name }) });
+                cows.forEach(c=>{ if(c.sold_to === e.name) c.sold_to = name; });
+                calvings.forEach(c=>{ if(c.sold_to === e.name) c.sold_to = name; });
+                saveOfflineCache();
+              }catch(err){ /* names on old sales stay as they were */ }
+            }
+          } else {
+            const ins = await api('/buyers', { method:'POST', headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}), body: JSON.stringify(body) });
+            if(ins && ins[0]) buyersList.push(ins[0]);
+          }
+          closeModal(); draw(); showToast('Buyer saved');
+        }catch(err){ btn.disabled = false; showToast('Could not save — try again'); }
+      });
+    }
   }
+
   // ===== Sale Sheets =====
   function soldLabel(r){
     let t = 'Sold';

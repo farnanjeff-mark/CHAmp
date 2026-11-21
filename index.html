@@ -732,6 +732,7 @@
       <button class="btn" id="manageMedsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">💊</span>Meds</button>
       <button class="btn" id="manageLocationsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📍</span>Locations</button>
       <button class="btn" id="manageOwnersBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">👤</span>Owners</button>
+      <button class="btn" id="manageBuyersBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🤝</span>Buyers</button>
       <button class="btn" id="manageGroupsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🐮</span>Groups</button>
       <button class="btn" id="manageReasonsBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">📋</span>Reasons</button>
       <button class="btn" id="manageCustomAIBtn" style="background:#fff;border:1.5px solid #2E88C4;color:#0C5A8E;display:flex;align-items:center;gap:8px;text-align:left;padding:10px 10px;font-size:12px;"><span style="font-size:20px;">🧪</span>Custom AI</button>
@@ -3594,11 +3595,179 @@
     renderHayingList();
     window.scrollTo(0,0);
   }
+
+  // ===== Sold details pop-up + Buyers list =====
+  // Optional pop-up that asks for buyer, date and amount when a cow or calf is marked Sold. Skip leaves it blank.
+  let buyersList = null;   // [{id, name}] - loaded the first time it is needed (needs signal)
+  function fmtMoneySold(v){
+    const n = Number(v);
+    if(!isFinite(n)) return '';
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: (n % 1 ? 2 : 0), maximumFractionDigits: 2 });
+  }
+  async function ensureBuyers(force){
+    if(buyersList && !force) return buyersList;
+    try{
+      buyersList = await api('/buyers?select=*&order=name.asc', { method:'GET' }) || [];
+    }catch(e){
+      if(!buyersList) buyersList = [];
+    }
+    return buyersList;
+  }
+  async function addBuyerIfNew(name){
+    name = (name || '').trim();
+    if(!name) return null;
+    await ensureBuyers();
+    const found = buyersList.find(b=>b.name.toLowerCase() === name.toLowerCase());
+    if(found) return found.name;
+    const inserted = await api('/buyers', {
+      method:'POST',
+      headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+      body: JSON.stringify({ name })
+    });
+    buyersList.push(inserted[0]);
+    buyersList.sort((a,b)=>a.name.localeCompare(b.name));
+    return inserted[0].name;
+  }
+  // kind: 'cow' (key = cow number) or 'calf' (key = calving id, rec = the calf record)
+  async function soldDetailsPopup(kind, key, rec){
+    await ensureBuyers();
+    const row = kind === 'cow' ? cows.find(c=>c.number === key) : (rec || calvings.find(c=>c.id === key));
+    if(!row) return;
+    const who = kind === 'cow' ? ('#' + key) : 'Calf';
+    const curBuyer = row.sold_to || '';
+    const names = buyersList.map(b=>b.name);
+    if(curBuyer && names.indexOf(curBuyer) < 0) names.push(curBuyer);
+    names.sort((a,b)=>a.localeCompare(b));
+    const modal = openModal(`
+      <div class="modal-title">Sold — ${escapeHtml(who)}</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;margin:-6px 0 12px;">Optional. You can skip this and fill it in later.</div>
+      <div class="field">
+        <label>Buyer</label>
+        <select id="soldBuyerSelect">
+          <option value="">Select buyer</option>
+          ${names.map(n=>`<option value="${escapeHtml(n)}" ${n===curBuyer?'selected':''}>${escapeHtml(n)}</option>`).join('')}
+          <option value="__new__">+ Add new buyer</option>
+        </select>
+      </div>
+      <div class="field hidden" id="soldNewBuyerField">
+        <label>New buyer name</label>
+        <input type="text" id="soldNewBuyer" placeholder="e.g. Clarinda Livestock"/>
+      </div>
+      <div class="field">
+        <label>Date sold</label>
+        <input type="date" id="soldDate" value="${escapeHtml(row.sold_date || todayLocal())}"/>
+      </div>
+      <div class="field">
+        <label>Amount</label>
+        <input type="text" id="soldPrice" inputmode="decimal" placeholder="$" value="${row.sold_price !== null && row.sold_price !== undefined ? escapeHtml(String(row.sold_price)) : ''}"/>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="soldSkipBtn">Skip</button>
+        <button class="btn btn-barn" id="soldSaveBtn">Save</button>
+      </div>
+    `);
+    const sel = modal.querySelector('#soldBuyerSelect'), newField = modal.querySelector('#soldNewBuyerField');
+    sel.addEventListener('change', ()=>{
+      newField.classList.toggle('hidden', sel.value !== '__new__');
+      if(sel.value === '__new__') modal.querySelector('#soldNewBuyer').focus();
+    });
+    modal.querySelector('#soldSkipBtn').addEventListener('click', closeModal);
+    modal.querySelector('#soldSaveBtn').addEventListener('click', async ()=>{
+      const btn = modal.querySelector('#soldSaveBtn');
+      const dateVal = modal.querySelector('#soldDate').value || null;
+      const priceRaw = modal.querySelector('#soldPrice').value.replace(/[$,\s]/g,'');
+      let price = null;
+      if(priceRaw !== ''){
+        price = Number(priceRaw);
+        if(!isFinite(price) || price < 0){ showToast('Enter the amount as a number'); return; }
+      }
+      btn.disabled = true;
+      try{
+        let buyer = sel.value === '__new__' ? await addBuyerIfNew(modal.querySelector('#soldNewBuyer').value) : (sel.value || null);
+        if(sel.value === '__new__' && !buyer){ btn.disabled = false; showToast('Type the buyer name'); return; }
+        const body = { sold_date: dateVal, sold_to: buyer, sold_price: price };
+        const path = kind === 'cow' ? '/cows?number=eq.' + encodeURIComponent(key) : '/calvings?id=eq.' + encodeURIComponent(key);
+        const updated = await api(path, {
+          method:'PATCH',
+          headers: Object.assign({}, HEADERS, {'Prefer':'return=representation'}),
+          body: JSON.stringify(body)
+        });
+        if(kind === 'cow'){
+          const idx = cows.findIndex(c=>c.number === key);
+          if(idx !== -1 && updated && updated[0]) cows[idx] = updated[0];
+          saveOfflineCache();
+          closeModal();
+          refreshOpenCowHeaders(); renderList(); renderProfileList();
+        } else {
+          const idx = calvings.findIndex(c=>c.id === key);
+          if(idx !== -1 && updated && updated[0]){ calvings[idx] = updated[0]; if(rec) Object.assign(rec, updated[0]); }
+          saveOfflineCache();
+          closeModal();    // this pop-up
+          closeModal();    // the calf record screen underneath
+          renderProfileList();
+          if(rec) calfRecordModal(rec);
+        }
+        showToast('Sale details saved');
+      }catch(e){
+        btn.disabled = false;
+        showToast(e && e.isNetworkFailure ? 'Need signal to save sale details' : 'Could not save — try again');
+      }
+    });
+  }
+  // Buyers list (Utilities > Reference Lists > Buyers): add or remove names for the Sold pop-up dropdown.
+  async function buyersModal(){
+    await ensureBuyers(true);
+    const modal = openModal(`
+      <div class="modal-title">Buyers</div>
+      <div id="buyersListBox"></div>
+      <div class="field" style="margin-top:12px;">
+        <label>Add buyer</label>
+        <input type="text" id="newBuyerName" placeholder="e.g. Clarinda Livestock"/>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="closeBuyers">Close</button>
+        <button class="btn btn-barn" id="addBuyerBtn">Add Buyer</button>
+      </div>
+    `);
+    const box = modal.querySelector('#buyersListBox');
+    function draw(){
+      const sorted = [...buyersList].sort((a,b)=>a.name.localeCompare(b.name));
+      box.innerHTML = sorted.length ? sorted.map(b=>`
+        <div class="cow-card" style="cursor:default;">
+          <div><div class="cow-num" style="font-size:17px;">${escapeHtml(b.name)}</div></div>
+          <button class="remove-buyer-btn" data-id="${escapeHtml(b.id)}" data-name="${escapeHtml(b.name)}" title="Remove buyer" style="background:none;border:none;color:#a08f6b;font-size:22px;cursor:pointer;padding:4px 8px;">&times;</button>
+        </div>`).join('') : '<div class="empty">No buyers in the list yet.</div>';
+      box.querySelectorAll('.remove-buyer-btn').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!confirm(`Remove "${btn.dataset.name}" from the buyer list? Sales already saved with this buyer keep the name.`)) return;
+          try{
+            await api('/buyers?id=eq.' + encodeURIComponent(btn.dataset.id), { method:'DELETE' });
+            buyersList = buyersList.filter(b=>b.id !== btn.dataset.id);
+            draw(); showToast('Buyer removed');
+          }catch(e){ showToast('Could not remove — try again'); }
+        });
+      });
+    }
+    draw();
+    modal.querySelector('#closeBuyers').addEventListener('click', closeModal);
+    modal.querySelector('#addBuyerBtn').addEventListener('click', async ()=>{
+      const input = modal.querySelector('#newBuyerName');
+      const name = input.value.trim();
+      if(!name){ showToast('Enter a buyer name'); return; }
+      if(buyersList.some(b=>b.name.toLowerCase() === name.toLowerCase())){ showToast('That buyer is already in the list'); return; }
+      try{
+        await addBuyerIfNew(name);
+        input.value = '';
+        draw(); showToast('Buyer added');
+      }catch(e){ showToast('Could not add — try again'); }
+    });
+  }
   // ===== Sale Sheets =====
   function soldLabel(r){
     let t = 'Sold';
     if(r.sold_date) t += ' ' + fmtDateShort(r.sold_date);
     if(r.sold_to) t += ' to ' + r.sold_to;
+    if(r.sold_price !== null && r.sold_price !== undefined && r.sold_price !== '') t += ', ' + fmtMoneySold(r.sold_price);
     return escapeHtml(t);
   }
   function saleSheetBtnHtml(r){
@@ -8224,6 +8393,9 @@
                <option value="died" ${calvingRecord.calf_outcome==='died' ? 'selected' : ''}>Died</option>
              </select>
            </div>
+           ${calvingRecord.calf_outcome === 'sold' ? `
+           <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">${soldLabel(calvingRecord)}</div>
+           <button class="btn btn-outline btn-full" id="calfEditSoldBtn" style="margin-bottom:10px;">✏️ Edit Sale Details</button>` : ''}
            ${calvingRecord.calf_outcome === 'died' ? `
            <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">
              <div><strong>Died:</strong> ${calvingRecord.died_date ? fmtDate(calvingRecord.died_date) : 'date not recorded'}</div>
@@ -8281,8 +8453,11 @@
         await setCalfOutcome(calvingRecord, val || null);
         closeModal();
         calfRecordModal(calvingRecord);
+        if(val === 'sold' && calvingRecord.calf_outcome === 'sold') soldDetailsPopup('calf', calvingRecord.id, calvingRecord);
       });
     }
+    const editSoldBtn = modal.querySelector('#calfEditSoldBtn');
+    if(editSoldBtn) editSoldBtn.addEventListener('click', ()=> soldDetailsPopup('calf', calvingRecord.id, calvingRecord));
     const editDiedBtn = modal.querySelector('#calfEditDiedBtn');
     if(editDiedBtn){
       editDiedBtn.addEventListener('click', ()=> calfDiedModal(calvingRecord));
@@ -10040,6 +10215,7 @@
   document.getElementById('manageLocationsHomeBtn').addEventListener('click', showHome);
   document.getElementById('addLocationBtn').addEventListener('click', addLocationModal);
   document.getElementById('manageOwnersBtn').addEventListener('click', showManageOwners);
+  document.getElementById('manageBuyersBtn').addEventListener('click', buyersModal);
   document.getElementById('manageOwnersHomeBtn').addEventListener('click', showHome);
   document.getElementById('addOwnerBtn').addEventListener('click', addOwnerModal);
   document.getElementById('manageGroupsBtn').addEventListener('click', showManageGroups);
@@ -11482,6 +11658,7 @@
         const homeTotalEl = document.getElementById('homeTotalCattle');
         if(homeTotalEl) homeTotalEl.textContent = cows.filter(isActiveStatus).length;
         showToast('Status updated');
+        if(status === 'Sold') soldDetailsPopup('cow', targetNum);
       }catch(e){
         if(e && e.isNetworkFailure){
           const idx = cows.findIndex(c=>c.number===targetNum);
@@ -15871,7 +16048,7 @@
     let soldBox = '';
     if(me && me.status === 'Sold' && (me.sold_date || me.sold_to || me.sale_sheet_id)){
       const sh = me.sale_sheet_id ? saleSheets.find(x=>x.id === me.sale_sheet_id) : null;
-      const t = 'Sold' + (me.sold_date ? ' ' + fmtDateShort(me.sold_date) : '') + (me.sold_to ? ' to ' + me.sold_to : '');
+      const t = 'Sold' + (me.sold_date ? ' ' + fmtDateShort(me.sold_date) : '') + (me.sold_to ? ' to ' + me.sold_to : '') + ((me.sold_price !== null && me.sold_price !== undefined && me.sold_price !== '') ? ', ' + fmtMoneySold(me.sold_price) : '');
       soldBox = `<div style="background:#FFFFFF;border:1.5px solid #c9bfa4;border-left:6px solid #A05A2C;border-radius:2px;padding:10px 12px;margin-bottom:10px;">
         <div style="font-size:16px;font-weight:700;color:#A05A2C;">${escapeHtml(t)}</div>
         ${sh ? `<button class="btn btn-nav-tool btn-sm view-sale-sheet-btn" data-sheet="${escapeHtml(sh.id)}" style="margin-top:8px;">📋 View Sale Sheet</button>` : ''}

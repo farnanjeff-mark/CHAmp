@@ -7922,7 +7922,8 @@
       if(!bulkMode){
         const num = modal.querySelector('#newCowNum').value.trim();
         if(!num){ showToast('Enter a cow number'); confirmBtn.disabled = false; return; }
-        if(cows.some(c=>c.number.toLowerCase()===num.toLowerCase())){ showToast('That cow already exists'); confirmBtn.disabled = false; return; }
+        const dupCow = cows.find(c=>c.number.toLowerCase()===num.toLowerCase());
+        if(dupCow){ showToast(isActiveStatus(dupCow) ? 'That cow already exists' : `That cow already exists and is marked ${dupCow.status}`); confirmBtn.disabled = false; return; }
         const cowBody = { number: num, lot: lot||null, owner: owner||null, cow_group: group||null };
         try{
           const inserted = await api('/cows', {
@@ -18571,12 +18572,12 @@
   function runHomeQuickSearch(){
     const q = homeQuickSearchValue.trim().toLowerCase();
     if(!q){ showToast('Enter a cow number'); return; }
-    const exact = cows.find(c=>isActiveStatus(c) && c.number.toLowerCase()===q);
+    const exact = cows.find(c=>c.number.toLowerCase()===q);
     if(exact){
       showQuickAction([exact]);
       return;
     }
-    const partial = cows.filter(c=>isActiveStatus(c) && c.number.toLowerCase().includes(q)).sort((a,b)=>cowNumCmp(a.number, b.number));
+    const partial = cows.filter(c=>c.number.toLowerCase().includes(q)).sort((a,b)=>(isActiveStatus(b)-isActiveStatus(a)) || cowNumCmp(a.number, b.number));
     if(partial.length === 0){
       showToast(`No cow found matching "${q}"`);
     } else {

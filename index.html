@@ -4681,6 +4681,8 @@
     fabAdd.classList.add('hidden');
     fabAddEquipment.classList.add('hidden');
     quickActionView.classList.add('hidden');
+    vetPregFromProfile = null;
+    setVetPregSaveLabel();
     vetPregCheckView.classList.remove('hidden');
     document.getElementById('vetPregCowNum').value = '';
     document.getElementById('vetPregDaysAlong').value = '';
@@ -9886,6 +9888,22 @@
     const daysAlong = Math.round((new Date(todayLocal()+'T00:00:00') - new Date(latest.breed_date+'T00:00:00')) / 86400000);
     if(daysAlong >= 0) document.getElementById('vetPregDaysAlong').value = daysAlong;
   }
+  // When Vet Preg Check is opened from a cow's profile, it saves that one cow and goes back to her profile.
+  let vetPregFromProfile = null;
+  function setVetPregSaveLabel(){
+    const b = document.getElementById('vetPregSaveBtn');
+    if(b) b.innerHTML = vetPregFromProfile ? 'Save' : 'Save &amp; Next';
+  }
+  function vetPregFinish(cowNumInput){
+    if(vetPregFromProfile){
+      const num = vetPregFromProfile;
+      vetPregFromProfile = null;
+      setVetPregSaveLabel();
+      openProfileCow(num);
+    } else {
+      cowNumInput.focus();
+    }
+  }
   async function markVetPregOpenEntry(){
     const cowNumInput = document.getElementById('vetPregCowNum');
     const daysInput = document.getElementById('vetPregDaysAlong');
@@ -9916,7 +9934,7 @@
       cowNumInput.value = '';
       daysInput.value = '';
       setVetPregMethod('');
-      cowNumInput.focus();
+      vetPregFinish(cowNumInput);
     }catch(e){
       if(e && e.isNetworkFailure){
         const idx = breedingRecords.findIndex(b=>b.id===latest.id);
@@ -9937,7 +9955,7 @@
         cowNumInput.value = '';
         daysInput.value = '';
         setVetPregMethod('');
-        cowNumInput.focus();
+        vetPregFinish(cowNumInput);
       } else {
         showToast('Could not save — try again');
       }
@@ -9985,7 +10003,7 @@
       cowNumInput.value = '';
       daysInput.value = '';
       setVetPregMethod('');
-      cowNumInput.focus();
+      vetPregFinish(cowNumInput);
     }catch(e){
       if(e && e.isNetworkFailure){
         const idx = breedingRecords.findIndex(b=>b.id===latest.id);
@@ -10004,7 +10022,7 @@
         cowNumInput.value = '';
         daysInput.value = '';
         setVetPregMethod('');
-        cowNumInput.focus();
+        vetPregFinish(cowNumInput);
       } else {
         showToast('Could not save — try again');
       }
@@ -10457,6 +10475,8 @@
   document.getElementById('profileVetCheckBtn').addEventListener('click', ()=>{
     const num = currentProfileCow;
     showVetPregCheck();
+    vetPregFromProfile = num || null;
+    setVetPregSaveLabel();
     document.getElementById('vetPregCowNum').value = num || '';
     document.getElementById('vetPregDaysAlong').focus();
   });

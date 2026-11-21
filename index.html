@@ -3137,6 +3137,12 @@
   function breedingFor(num){
     return breedingRecords.filter(b=>b.cow_number===num);
   }
+  // Green "CONFIRMED ET · date" badge for a breeding record the vet has checked (not Open).
+  function confirmedBadgeHtml(r){
+    if(!r || !r.vet_call_date || r.pregnancy_status === 'Open') return '';
+    const m = r.pregnancy_method ? ' ' + escapeHtml(r.pregnancy_method) : '';
+    return `<div style="display:inline-block;background:#3C9142;color:#fff;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:2px 0 4px;">&#10003; CONFIRMED${m} &middot; ${fmtDate(r.vet_call_date)}</div>`;
+  }
   // "Bred 142 days" text for a breeding record: days from breed date to today.
   // Left blank for Open cows, and for older breedings the cow has already calved from.
   function daysBredText(r){
@@ -7466,9 +7472,9 @@
           return `<div class="record has-tools"${r.pregnancy_status==='Open' ? ' style="border-left-color:#5C3A21;"' : ''}>
             ${profileRecordTools(r, 'breeding')}
             <div class="record-date">${fmtDate(r.breed_date)}</div>
+            ${confirmedBadgeHtml(r)}
             ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
             ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
-            ${r.vet_call_date && r.pregnancy_status!=='Open' ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#E6F1FB;border:1px solid #85B7EB;color:#0C447C;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:4px 0;">🩺 Vet call: ${fmtDate(r.vet_call_date)}${r.vet_calls ? ' — '+escapeHtml(r.vet_calls)+' days' : ''}</div>` : ''}
             ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
             ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
           </div>`;
@@ -7640,8 +7646,9 @@
         ${r._pendingSync ? '' : `<button class="record-edit" data-id="${r.id}">&#9998;</button>`}
         ${r._pendingSync ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;border:1px solid #E24B4A;color:#791F1F;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:6px;">Not synced yet</div>` : ''}
         <div class="record-date">${fmtDate(r.breed_date)}</div>
+        ${confirmedBadgeHtml(r)}
+        ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
         ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
-        ${r.vet_call_date ? `<div style="display:inline-flex;align-items:center;gap:5px;background:#E6F1FB;border:1px solid #85B7EB;color:#0C447C;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:4px 0;">🩺 Vet call: ${fmtDate(r.vet_call_date)}${r.vet_calls ? ' — '+escapeHtml(r.vet_calls)+' days' : ''}${r.pregnancy_status==='Open' ? ' — Open' : ''}</div>` : ''}
         ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
       `;

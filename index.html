@@ -3661,6 +3661,10 @@
         <label>Amount</label>
         <input type="text" id="soldPrice" inputmode="decimal" placeholder="$" value="${row.sold_price !== null && row.sold_price !== undefined ? escapeHtml(String(row.sold_price)) : ''}"/>
       </div>
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="soldNotes" rows="2" placeholder="Optional">${escapeHtml(row.sold_notes || '')}</textarea>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-outline" id="soldSkipBtn">Skip</button>
         <button class="btn btn-barn" id="soldSaveBtn">Save</button>
@@ -3685,7 +3689,7 @@
       try{
         let buyer = sel.value === '__new__' ? await addBuyerIfNew(modal.querySelector('#soldNewBuyer').value) : (sel.value || null);
         if(sel.value === '__new__' && !buyer){ btn.disabled = false; showToast('Type the buyer name'); return; }
-        const body = { sold_date: dateVal, sold_to: buyer, sold_price: price };
+        const body = { sold_date: dateVal, sold_to: buyer, sold_price: price, sold_notes: modal.querySelector('#soldNotes').value.trim() || null };
         const path = kind === 'cow' ? '/cows?number=eq.' + encodeURIComponent(key) : '/calvings?id=eq.' + encodeURIComponent(key);
         const updated = await api(path, {
           method:'PATCH',
@@ -8394,7 +8398,7 @@
              </select>
            </div>
            ${calvingRecord.calf_outcome === 'sold' ? `
-           <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">${soldLabel(calvingRecord)}</div>
+           <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">${soldLabel(calvingRecord)}${calvingRecord.sold_notes ? `<div style="margin-top:4px;font-size:13px;">${escapeHtml(calvingRecord.sold_notes)}</div>` : ''}</div>
            <button class="btn btn-outline btn-full" id="calfEditSoldBtn" style="margin-bottom:10px;">✏️ Edit Sale Details</button>` : ''}
            ${calvingRecord.calf_outcome === 'died' ? `
            <div style="padding:12px 14px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;margin-bottom:10px;font-family:Arial,sans-serif;font-size:14px;color:#0C447C;">
@@ -16051,6 +16055,7 @@
       const t = 'Sold' + (me.sold_date ? ' ' + fmtDateShort(me.sold_date) : '') + (me.sold_to ? ' to ' + me.sold_to : '') + ((me.sold_price !== null && me.sold_price !== undefined && me.sold_price !== '') ? ', ' + fmtMoneySold(me.sold_price) : '');
       soldBox = `<div style="background:#FFFFFF;border:1.5px solid #c9bfa4;border-left:6px solid #A05A2C;border-radius:2px;padding:10px 12px;margin-bottom:10px;">
         <div style="font-size:16px;font-weight:700;color:#A05A2C;">${escapeHtml(t)}</div>
+        ${me.sold_notes ? `<div style="font-size:13px;color:#44627F;margin-top:3px;">${escapeHtml(me.sold_notes)}</div>` : ''}
         ${sh ? `<button class="btn btn-nav-tool btn-sm view-sale-sheet-btn" data-sheet="${escapeHtml(sh.id)}" style="margin-top:8px;">📋 View Sale Sheet</button>` : ''}
       </div>`;
     }

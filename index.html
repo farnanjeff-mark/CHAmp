@@ -7474,8 +7474,8 @@
             <div class="record-date">${fmtDate(r.breed_date)}</div>
             ${confirmedBadgeHtml(r)}
             ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
-            ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
             ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
+            ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
             ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
           </div>`;
         }).join('');
@@ -7648,8 +7648,8 @@
         <div class="record-date">${fmtDate(r.breed_date)}</div>
         ${confirmedBadgeHtml(r)}
         ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
-        ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
         ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
+        ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
       `;
       div.querySelector('.record-del').addEventListener('click', (e)=>{

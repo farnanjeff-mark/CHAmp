@@ -3143,6 +3143,11 @@
     const m = r.pregnancy_method ? ' ' + escapeHtml(r.pregnancy_method) : '';
     return `<div style="display:inline-block;background:#3C9142;color:#fff;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:2px 0 4px;">&#10003; CONFIRMED${m} &middot; ${fmtDate(r.vet_call_date)}</div>`;
   }
+  // Barn-red "OPEN · date" badge for a breeding record marked Open (twin of the green CONFIRMED badge).
+  function openBadgeHtml(r){
+    if(!r || r.pregnancy_status !== 'Open') return '';
+    return `<div style="display:inline-block;background:#5C3A21;color:#fff;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;margin:2px 0 4px;">OPEN${r.open_date ? ' &middot; ' + fmtDate(r.open_date) : ''}</div>`;
+  }
   // "Bred 142 days" text for a breeding record: days from breed date to today.
   // Left blank for Open cows, and for older breedings the cow has already calved from.
   function daysBredText(r){
@@ -7473,7 +7478,7 @@
             ${profileRecordTools(r, 'breeding')}
             <div class="record-date">${fmtDate(r.breed_date)}</div>
             ${confirmedBadgeHtml(r)}
-            ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
+            ${openBadgeHtml(r)}
             ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
             ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
             ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}
@@ -7647,7 +7652,7 @@
         ${r._pendingSync ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;border:1px solid #E24B4A;color:#791F1F;font-family:Arial,sans-serif;font-size:11px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:6px;">Not synced yet</div>` : ''}
         <div class="record-date">${fmtDate(r.breed_date)}</div>
         ${confirmedBadgeHtml(r)}
-        ${r.pregnancy_status==='Open' ? `<div class="record-med" style="color:#5C3A21;font-weight:700;">Open${r.open_date ? ' — '+fmtDate(r.open_date) : ''}</div>` : ''}
+        ${openBadgeHtml(r)}
         ${details.length ? `<div class="record-reason">${details.join(' · ')}</div>` : ''}
         ${r.expected_due_date ? `<div class="record-med">Due: ${fmtDate(r.expected_due_date)}</div>${daysBredText(r)}` : ''}
         ${r.notes ? `<div class="record-notes">${escapeHtml(r.notes)}</div>` : ''}

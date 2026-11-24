@@ -1005,6 +1005,12 @@
         <input type="checkbox" id="fieldCountCalvesOnly" style="width:18px;height:18px;accent-color:#fff;"/>
         <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;white-space:nowrap;">Calves only</span>
       </label>
+      <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:#0274BA;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;cursor:pointer;box-shadow:0 2px 5px rgba(43,38,32,.16);">
+        <input type="checkbox" id="fieldCountInHeatOnly" style="width:18px;height:18px;accent-color:#fff;"/>
+        <span style="font-family:Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#fff;white-space:nowrap;">In Heat only</span>
+      </label>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="btn" id="fieldCountHideBtn" aria-pressed="false" style="flex:1;background:#0274BA;color:#fff;border-color:#0274BA;justify-content:center;padding:10px 12px;">Hide checked: OFF</button>
     </div>
     <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:14px;">
@@ -5459,10 +5465,12 @@
   }
   let lastFieldCountMatched = [];
   let lastFieldCountCalvesOnly = false;
+  let lastFieldCountHeatOnly = false;
   function renderFieldCountList(){
     const locVal = document.getElementById('fieldCountLocationFilter').value;
     const grpVal = document.getElementById('fieldCountGroupFilter').value;
     const calvesOnly = document.getElementById('fieldCountCalvesOnly').checked;
+    const heatOnly = document.getElementById('fieldCountInHeatOnly').checked;
     document.getElementById('fieldCountAddCowBtn').classList.toggle('hidden', !locVal);
     let matched = cows.filter(c=> isActiveStatus(c) && (!locVal || c.lot===locVal) && (!grpVal || c.cow_group===grpVal));
     if(calvesOnly){
@@ -5471,17 +5479,36 @@
         .filter(x=> x.calf)
         .map(x=> x.cow);
     }
-    matched.sort((a,b)=> cowNumCmp(a.number, b.number));
+    if(heatOnly) matched = matched.filter(c=>c.in_heat);
+    // In Heat only with All Locations: group by farm (cows with no location go last), then by cow number.
+    const groupByFarm = heatOnly && !locVal;
+    matched.sort((a,b)=>{
+      if(groupByFarm){
+        const la = a.lot || '', lb = b.lot || '';
+        if(la !== lb){ if(!la) return 1; if(!lb) return -1; return la.localeCompare(lb); }
+      }
+      return cowNumCmp(a.number, b.number);
+    });
     const shown = fieldCountHideSnapshot ? matched.filter(c=>!fieldCountHideSnapshot.has(c.number)) : matched;
     lastFieldCountMatched = shown;
     lastFieldCountCalvesOnly = calvesOnly;
+    lastFieldCountHeatOnly = heatOnly;
     const listEl = document.getElementById('fieldCountList');
     const noneEl = document.getElementById('noFieldCountCows');
     const printBtn = document.getElementById('fieldCountPrintBtn');
     listEl.innerHTML = '';
     noneEl.classList.toggle('hidden', shown.length !== 0);
     printBtn.classList.toggle('hidden', shown.length === 0);
+    let lastFarmShown = null;
     shown.forEach(cow=>{
+      if(groupByFarm && (cow.lot || '') !== lastFarmShown){
+        lastFarmShown = cow.lot || '';
+        const farmCount = shown.filter(c=> (c.lot || '') === lastFarmShown).length;
+        const head = document.createElement('div');
+        head.style.cssText = 'background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:8px 12px;margin-top:6px;font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;display:flex;justify-content:space-between;align-items:center;';
+        head.innerHTML = `<span>${escapeHtml(lastFarmShown || 'No location')}</span><span>${farmCount} cow${farmCount!==1?'s':''}</span>`;
+        listEl.appendChild(head);
+      }
       const isChecked = fieldCountChecked.has(cow.number);
       const calf = calvesOnly ? activeCalfFor(cow.number) : null;
       const row = document.createElement('div');
@@ -5590,6 +5617,7 @@
     if(grpVal) subtitleParts.push('Group: '+grpVal);
     if(fieldCountHideSnapshot) subtitleParts.push('Unchecked only');
     if(lastFieldCountCalvesOnly) subtitleParts.push('Calves only');
+    if(lastFieldCountHeatOnly) subtitleParts.push('In Heat only');
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:24px;font-family:Arial,sans-serif;color:#000;">
         <h2 style="margin:0 0 4px;">Farnan Cattle Co. — Field Count</h2>
@@ -5614,6 +5642,7 @@
   document.getElementById('fieldCountLocationFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountGroupFilter').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountCalvesOnly').addEventListener('change', ()=>{ renderFieldCountList(); });
+  document.getElementById('fieldCountInHeatOnly').addEventListener('change', ()=>{ renderFieldCountList(); });
   document.getElementById('fieldCountClearBtn').addEventListener('click', ()=>{ fieldCountChecked.clear(); saveFieldCountChecked(); setFieldCountHide(false); });
   document.getElementById('fieldCountHideBtn').addEventListener('click', ()=>{ setFieldCountHide(!fieldCountHideSnapshot); });
   document.getElementById('fieldCountPrintBtn').addEventListener('click', printFieldCount);

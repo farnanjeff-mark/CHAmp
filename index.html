@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="CHAmp">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#6F2E24">
+<meta name="theme-color" content="#3F1D4D">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
@@ -28,10 +28,10 @@
   .app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:#CBBFAE;}
 
   .header{padding:22px 28px 20px;}
-  .eyebrow{font-family:Arial,sans-serif;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--barn);margin:0 0 4px;}
-  .h1{font-family:Arial,sans-serif;font-weight:700;font-size:15px;margin:4px 0 0;letter-spacing:.08em;text-transform:uppercase;color:var(--barn);}
+  .eyebrow{font-family:Arial,sans-serif;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:#3F1D4D;margin:0 0 4px;}
+  .h1{font-family:Arial,sans-serif;font-weight:700;font-size:15px;margin:4px 0 0;letter-spacing:.08em;text-transform:uppercase;color:#3F1D4D;}
   .company-name{font-family:Arial,sans-serif;font-weight:700;font-size:26px;margin:0;letter-spacing:.01em;}
-  .h1 span{color:var(--barn);}
+  .h1 span{color:#3F1D4D;}
   .sync-dot{width:9px;height:9px;border-radius:50%;background:var(--pasture);flex-shrink:0;}
   .sync-dot.err{background:var(--barn);}
   .sync-dot.busy{background:var(--tag);}
@@ -118,7 +118,7 @@
   .btn:active{transform:translateY(1px);box-shadow:0 1px 2px rgba(43,38,32,.16);}
   .btn[disabled]{opacity:.5;cursor:default;}
   .btn-outline{background:#FFFFFF;border-color:#2E88C4;color:var(--ink);}
-  .btn-barn{background:var(--barn);color:var(--paper);border-color:var(--barn);}
+  .btn-barn{background:#3F1D4D;color:var(--paper);border-color:#3F1D4D;}
   .btn-pasture{background:var(--pasture);color:var(--paper);border-color:var(--pasture);}
   .btn-pink{background:#D46A8C;color:var(--paper);border-color:#D46A8C;}
   .btn-blue{background:#3B6E8F;color:var(--paper);border-color:#3B6E8F;}
@@ -147,7 +147,7 @@
     background:var(--paper-raised);border:2px solid #2E88C4;border-left:8px solid var(--pasture);
     border-radius:2px;cursor:pointer;
   }
-  .cow-card.recent-activity{border-left-color:var(--barn);}
+  .cow-card.recent-activity{border-left-color:#3F1D4D;}
   .cow-card.status-inactive{background:#c9c2b3;border-left-color:var(--muted2);}
   .status-badge{display:inline-block;background:var(--muted2);color:var(--paper);font-size:9px;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:8px;margin-left:6px;}
   .cow-num{font-size:22px;font-weight:700;font-family:Arial,sans-serif;}
@@ -210,7 +210,7 @@
   .record{background:var(--paper-raised);border:1.5px solid var(--line);border-left:6px solid var(--line);border-radius:2px;padding:12px 14px;margin-bottom:8px;position:relative;}
   .record.note-entry{border-left-color:#3B6E8F;}
   .record.note-entry .record-date{color:#3B6E8F;}
-  .record-date{font-family:Arial,sans-serif;font-size:19px;font-weight:700;color:var(--barn);}
+  .record-date{font-family:Arial,sans-serif;font-size:19px;font-weight:700;color:#3F1D4D;}
   .record-med{font-size:19px;font-weight:700;margin:3px 0 2px;}
   .record-reason{font-size:16px;color:#4a4433;}
   .record-notes{font-family:Arial,sans-serif;font-size:14px;color:var(--muted);margin-top:6px;border-top:1px dashed var(--line);padding-top:6px;}
@@ -342,7 +342,7 @@
 
   .fab{
     position:fixed;bottom:24px;left:50%;transform:translateX(calc(-50% + (min(480px,100vw) - 40px)/2 - 26px));
-    width:56px;height:56px;border-radius:50%;background:var(--barn);color:var(--paper);border:none;
+    width:56px;height:56px;border-radius:50%;background:#3F1D4D;color:var(--paper);border:none;
     font-size:28px;line-height:1;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3);
     display:flex;align-items:center;justify-content:center;
   }
@@ -393,7 +393,7 @@
        they are invisible on phones. To remove the polish, delete those four lines and the rules in this block that mention dsk-only. */
     .dsk-only{display:block;}
     .dsk-name{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:10px 8px;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 18px;}
-    .dsk-label{display:none !important;font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--barn);text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
+    .dsk-label{display:none !important;font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:#3F1D4D;text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
     #homeView [style*="margin:-15px 0 25px"]{margin:0 0 22px !important;}
     #homeView [style*="padding-top:16px"]{padding-top:0 !important;}
     #homeView [style*="padding-top:6px"]{padding-top:8px !important;}
@@ -538,7 +538,7 @@
   .vlt-count{font-family:Arial,sans-serif;font-size:14px;color:var(--muted);margin:0 0 8px;}
   .vlt-cards{display:flex;flex-direction:column;gap:12px;}
   .vlt-card{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:14px;box-shadow:0 2px 5px rgba(43,38,32,.12);font-family:Arial,sans-serif;}
-  .vlt-card-holder{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--barn);margin-bottom:2px;word-break:break-word;}
+  .vlt-card-holder{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#3F1D4D;margin-bottom:2px;word-break:break-word;}
   .vlt-card-name{font-size:19px;font-weight:700;color:#0C5A8E;margin-bottom:10px;word-break:break-word;}
   .vlt-card-rows{border-top:1px solid var(--line);padding-top:8px;}
   .vlt-row{display:flex;gap:10px;padding:4px 0;font-size:15px;line-height:1.35;}
@@ -916,7 +916,7 @@
     </div>
     <div style="display:flex;gap:8px;margin-bottom:20px;">
       <button class="btn btn-barn" id="vetPregSaveBtn" style="flex:1;">Save &amp; Next</button>
-      <button class="btn btn-outline" id="vetPregOpenBtn" style="flex:1;border-color:#6F2E24;color:#6F2E24;">Mark Open</button>
+      <button class="btn btn-outline" id="vetPregOpenBtn" style="flex:1;border-color:#3F1D4D;color:#3F1D4D;">Mark Open</button>
     </div>
     <div class="section-label" style="margin-top:0;">This Session</div>
     <div id="vetPregTallyList"></div>
@@ -1886,7 +1886,7 @@
     </div>
     <div id="profileSecBreeding">
       <div class="section-label">Breeding Records</div>
-      <button class="btn btn-outline btn-full" id="profileVetCheckBtn" style="margin-bottom:10px;border-color:#6F2E24;color:#6F2E24;">🩺 Vet Preg Check</button>
+      <button class="btn btn-outline btn-full" id="profileVetCheckBtn" style="margin-bottom:10px;border-color:#3F1D4D;color:#3F1D4D;">🩺 Vet Preg Check</button>
       <div id="profileBreedingList"></div>
     </div>
 
@@ -2805,7 +2805,7 @@
     function draw(){
       const all = menuOrdered().filter(m=>!menuHidden(m[0]) && !menuIsPinned(m[0]));
       const main = all.filter(m=>menuSubIds.indexOf(m[0]) < 0), more = all.filter(m=>menuSubIds.indexOf(m[0]) >= 0);
-      const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#6F2E24;margin:12px 0 2px;">${t}</div>`;
+      const head = t=>`<div style="font-family:Arial,sans-serif;font-weight:700;font-size:13px;color:#3F1D4D;margin:12px 0 2px;">${t}</div>`;
       list.innerHTML = '<div style="font-family:Arial,sans-serif;font-size:13px;color:#44627F;padding:4px 0 2px;">Voice, Vault, To Do and Activity stay in a fixed row at the top of the phone screen.</div>' + head('MAIN SCREEN ('+main.length+' of '+MENU_MAX_MAIN+')')
         + main.map((m,i)=>rowHtml(m,i===0,i===main.length-1)).join('')
         + head('MORE SCREEN')
@@ -8458,11 +8458,11 @@
       ${calvingRecord.promoted_to_cow_number
         ? `<div style="padding:12px 14px;background:var(--paper-raised);border:2px solid var(--ink);border-radius:10px;font-weight:700;color:#3C9142;">✓ ${calvingRecord.calf_outcome === 'bull' ? 'Kept as bull' : 'Promoted to'} #${escapeHtml(calvingRecord.promoted_to_cow_number)}</div>`
         : `<label style="display:flex;align-items:center;gap:10px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;">
-             <input type="checkbox" id="calfToSellCheck" ${calvingRecord.to_sell ? 'checked' : ''} style="width:20px;height:20px;accent-color:#6F2E24;"/>
+             <input type="checkbox" id="calfToSellCheck" ${calvingRecord.to_sell ? 'checked' : ''} style="width:20px;height:20px;accent-color:#3F1D4D;"/>
              <span style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">Mark to sell</span>
            </label>
            <label style="display:flex;align-items:center;gap:10px;background:#E6F1FB;border:2px solid #0274BA;border-radius:10px;padding:10px 12px;margin-bottom:10px;cursor:pointer;">
-             <input type="checkbox" id="calfHeldOverCheck" ${calvingRecord.held_over ? 'checked' : ''} style="width:20px;height:20px;accent-color:#6F2E24;"/>
+             <input type="checkbox" id="calfHeldOverCheck" ${calvingRecord.held_over ? 'checked' : ''} style="width:20px;height:20px;accent-color:#3F1D4D;"/>
              <span style="font-family:Arial,sans-serif;font-size:14px;font-weight:700;color:#0C447C;">Held over</span>
            </label>
            <div class="field">
@@ -12102,7 +12102,7 @@
         <button class="record-del" data-id="${h.id}">&times;</button>
         <button class="record-edit" data-id="${h.id}">&#9998;</button>
         <div class="record-date">${fmtDate(h.entry_date)}</div>
-        <div class="record-med">${escapeHtml(h.location)}${h.customer ? ' · <span style="color:#6F2E24;">'+escapeHtml(h.customer)+'</span>' : ''}${h.billed_at ? ' · <span style="color:#455B3D;font-weight:700;">Billed</span>' : ''}</div>
+        <div class="record-med">${escapeHtml(h.location)}${h.customer ? ' · <span style="color:#3F1D4D;">'+escapeHtml(h.customer)+'</span>' : ''}${h.billed_at ? ' · <span style="color:#455B3D;font-weight:700;">Billed</span>' : ''}</div>
         <div class="record-reason">${[tasks.join(', '), h.total_bales!=null ? h.total_bales + ' bales' : null, h.acres!=null ? h.acres + ' acres' : null].filter(Boolean).join(' · ')}</div>
         ${h.notes ? `<div class="record-notes">${escapeHtml(h.notes)}</div>` : ''}
       `;
@@ -12263,7 +12263,7 @@
     document.getElementById('printListOutput').innerHTML = `
       <div style="padding:32px;font-family:Arial,sans-serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
-          <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#6F2E24;margin:0 0 6px;">${escapeHtml(bill.farm_name||'')}</div>
+          <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:500;color:#3F1D4D;margin:0 0 6px;">${escapeHtml(bill.farm_name||'')}</div>
           ${hasSplitAddress ? `
             ${bill.address_street ? `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:400;color:#2B2620;">${escapeHtml(bill.address_street)}</div>` : ''}
             ${bill.address_city_state ? `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:400;color:#2B2620;">${escapeHtml(bill.address_city_state)}</div>` : ''}
@@ -13245,7 +13245,7 @@
     return `
       <div style="padding:32px;font-family:Arial,sans-serif;color:#2B2620;max-width:600px;margin:0 auto;">
         <div style="text-align:center;border-bottom:3px solid #2B2620;padding-bottom:16px;margin-bottom:20px;">
-          <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6F2E24;margin:0 0 6px;">${escapeHtml(farmName)}</div>
+          <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#3F1D4D;margin:0 0 6px;">${escapeHtml(farmName)}</div>
           ${farmStreet ? `<div style="font-family:Arial,sans-serif;font-size:14px;color:#6b6350;">${escapeHtml(farmStreet)}</div>` : ''}
           ${(farmCityState||farmZip) ? `<div style="font-family:Arial,sans-serif;font-size:14px;color:#6b6350;">${escapeHtml(farmCityState)}${farmCityState&&farmZip?' ':''}${escapeHtml(farmZip)}</div>` : ''}
           <h2 style="margin:10px 0 0;font-weight:500;font-size:20px;color:#0C5A8E;text-transform:uppercase;letter-spacing:.05em;">Custom A.I. Service Bill</h2>
@@ -13271,7 +13271,7 @@
         <div style="display:flex;justify-content:space-between;font-size:13px;color:#6b6350;font-family:Arial,sans-serif;margin-bottom:10px;"><span>Drugs and supplies</span><span>$${Number(job.supplies_total).toFixed(2)}</span></div>
         <div style="display:flex;justify-content:space-between;align-items:center;border-top:3px solid #2B2620;padding-top:14px;">
           <span style="font-family:Arial,sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.05em;">Total due</span>
-          <span style="font-size:26px;font-weight:700;color:#6F2E24;">$${Number(job.job_total).toFixed(2)}</span>
+          <span style="font-size:26px;font-weight:700;color:#3F1D4D;">$${Number(job.job_total).toFixed(2)}</span>
         </div>
       </div>
     `;
@@ -16155,8 +16155,8 @@
     if(me && me.status === 'Sold' && (me.sold_date || me.sold_to || me.sale_sheet_id)){
       const sh = me.sale_sheet_id ? saleSheets.find(x=>x.id === me.sale_sheet_id) : null;
       const t = 'Sold' + (me.sold_date ? ' ' + fmtDateShort(me.sold_date) : '') + (me.sold_to ? ' to ' + me.sold_to : '') + ((me.sold_price !== null && me.sold_price !== undefined && me.sold_price !== '') ? ', ' + fmtMoneySold(me.sold_price) : '');
-      soldBox = `<div style="background:#FFFFFF;border:1.5px solid #c9bfa4;border-left:6px solid #6F2E24;border-radius:2px;padding:10px 12px;margin-bottom:10px;">
-        <div style="font-size:16px;font-weight:700;color:#6F2E24;">${escapeHtml(t)}</div>
+      soldBox = `<div style="background:#FFFFFF;border:1.5px solid #c9bfa4;border-left:6px solid #3F1D4D;border-radius:2px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-size:16px;font-weight:700;color:#3F1D4D;">${escapeHtml(t)}</div>
         ${me.sold_notes ? `<div style="font-size:13px;color:#44627F;margin-top:3px;">${escapeHtml(me.sold_notes)}</div>` : ''}
         ${sh ? `<button class="btn btn-nav-tool btn-sm view-sale-sheet-btn" data-sheet="${escapeHtml(sh.id)}" style="margin-top:8px;">📋 View Sale Sheet</button>` : ''}
       </div>`;
@@ -18719,7 +18719,7 @@
     rec.maxAlternatives = 3;
     const reset = ()=>{ voiceRec = null; btn.innerHTML = '&#127908;<span style="font-size:13px;">Voice</span>'; btn.style.background = ''; };
     btn.innerHTML = '&#127908;<span style="font-size:12px;">Listening</span>';
-    btn.style.background = '#6F2E24';
+    btn.style.background = '#3F1D4D';
     let heard = false;
     rec.onresult = (ev)=>{
       heard = true;

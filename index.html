@@ -44,6 +44,8 @@
   .refresh-btn:active{transform:translateY(1px);}
 
   .view{padding:16px 18px 100px;}
+  /* Main screen only: smaller bottom gap so the page fits the phone and stops sliding up/down. Delete this line to restore the old 100px gap. */
+  #homeView{padding-bottom:20px;}
   .hidden{display:none !important;}
 
   .toolbar{display:flex;gap:8px;margin-bottom:14px;}
@@ -391,7 +393,7 @@
     .dsk-name{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:10px 8px;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 18px;}
     .dsk-label{display:none !important;font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:var(--barn);text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
     #homeView [style*="margin:-15px 0 25px"]{margin:0 0 22px !important;}
-    #homeView [style*="padding-top:32px"]{padding-top:0 !important;}
+    #homeView [style*="padding-top:16px"]{padding-top:0 !important;}
     #homeView [style*="padding-top:6px"]{padding-top:8px !important;}
     #homeView div[style*="display:flex;gap:6px"]{gap:8px !important;}
     /* Clean list look (added Nov 1): no keypad (you type the cow number), and the tiles become a column:
@@ -635,7 +637,7 @@
       </div>
       <div class="dsk-only dsk-find"><input id="dskCowInput" name="cow_lookup_box" type="text" inputmode="numeric" autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')" placeholder="Type number" aria-label="Cow number"/><button type="button" id="dskCowGo">Go</button></div>
       <div class="dsk-only dsk-label">HERD STATUS</div>
-      <div style="display:flex;gap:6px;padding-top:32px;">
+      <div style="display:flex;gap:6px;padding-top:16px;">
         <div id="homeCalvedWrap" style="min-width:0;min-height:62px;box-sizing:border-box;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:linear-gradient(135deg, #2E88C4, #0C5A8E);border:2px solid #fff;border-radius:10px;padding:4px 2px;cursor:pointer;">
           <span id="homeCalvedBadge" style="font-size:30px;font-weight:400;color:#fff;line-height:1;">0</span>
           <span style="font-family:Arial,sans-serif;font-size:14px;color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.02em;">Calved</span>

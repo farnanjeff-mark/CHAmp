@@ -46,6 +46,8 @@
   .view{padding:16px 18px 100px;}
   /* Main screen only: smaller bottom gap so the page fits the phone and stops sliding up/down. Delete this line to restore the old 100px gap. */
   #homeView{padding-bottom:20px;}
+  /* No rubber-band bounce while the main screen is showing. Other screens keep normal scrolling. Delete this line to restore the bounce. */
+  body:has(#homeView:not(.hidden)){overscroll-behavior-y:none;}
   .hidden{display:none !important;}
 
   .toolbar{display:flex;gap:8px;margin-bottom:14px;}

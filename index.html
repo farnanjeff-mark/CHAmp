@@ -2301,6 +2301,12 @@
         res = await fetch(REST + path, Object.assign({ headers: HEADERS }, options||{}));
         break; // got a response — stop retrying
       }catch(networkErr){
+        if(networkErr && networkErr.name === 'AbortError' && options && options.signal){
+          setSync('err');
+          showConnError('Slow connection — could not reach the database. Check your signal.');
+          networkErr.isNetworkFailure = true;
+          throw networkErr;
+        }
         if(attempt < maxAttempts){
           await new Promise(r=>setTimeout(r, 400 * attempt)); // brief pause, then try again — smooths out short blips
           continue;
@@ -2917,6 +2923,8 @@
     setTimeout(()=>{ try{ pwEl.focus(); }catch(e){} }, 50);
   }
   let isLoadingAll = false;
+  let loadedOnce = false;            // true once herd data is on screen (fresh or from the saved copy)
+  const STARTUP_TIMEOUT_MS = 8000;   // on a weak signal, stop waiting after this long and use the saved copy
   async function loadAll(){
     if(isLoadingAll) return;
     isLoadingAll = true;
@@ -2929,35 +2937,41 @@
     }
   }
   async function loadAllInner(){
+    // Time limit: only when a saved copy exists to fall back on (otherwise a slow first-ever load must be allowed to finish).
+    const loadCtrl = new AbortController();
+    let hasSavedCopy = false;
+    try{ hasSavedCopy = !!localStorage.getItem(OFFLINE_CACHE_KEY); }catch(e){}
+    const loadTimer = (hasSavedCopy || loadedOnce) ? setTimeout(()=> loadCtrl.abort(), STARTUP_TIMEOUT_MS) : null;
+    const apiLoad = (path, opts)=> api(path, Object.assign({}, opts, { signal: loadCtrl.signal }));
     try{
       const [cowsRes, treatRes, calvingsRes, notesRes, weightsRes, breedingRes, photosRes, tallyRes, hayingRes, equipmentRes, equipmentListRes, calfTreatRes, calfWeightRes, farmNotesRes, bullsRes, hayingFieldsRes, medicinesRes, locationsRes, ownersRes, groupsRes, reasonsRes, todosRes, hayingCustomersRes, hayingBillsRes, hayingBillSettingsRes, homeStatsSettingsRes, saleSheetsRes] = await Promise.all([
-        api('/cows?select=*&order=number.asc', { method:'GET' }),
-        api('/treatments?select=*', { method:'GET' }),
-        api('/calvings?select=*', { method:'GET' }),
-        api('/general_notes?select=*', { method:'GET' }),
-        api('/weights?select=*', { method:'GET' }),
-        api('/breeding_records?select=*', { method:'GET' }),
-        api('/cow_photos?select=*', { method:'GET' }),
-        api('/herd_tally?select=*', { method:'GET' }),
-        api('/haying_log?select=*', { method:'GET' }),
-        api('/equipment_maintenance?select=*', { method:'GET' }),
-        api('/equipment?select=*', { method:'GET' }),
-        api('/calf_treatments?select=*', { method:'GET' }),
-        api('/calf_weights?select=*', { method:'GET' }),
-        api('/farm_notes?select=*', { method:'GET' }),
-        api('/bulls?select=*&order=name.asc', { method:'GET' }),
-        api('/haying_fields?select=*&order=name.asc', { method:'GET' }),
-        api('/medicines?select=*&order=name.asc', { method:'GET' }),
-        api('/locations?select=*&order=name.asc', { method:'GET' }),
-        api('/owners?select=*&order=name.asc', { method:'GET' }),
-        api('/cow_groups?select=*&order=name.asc', { method:'GET' }),
-        api('/med_reasons?select=*&order=name.asc', { method:'GET' }),
-        api('/todos?select=*&order=created_at.asc', { method:'GET' }),
-        api('/haying_customers?select=*&order=name.asc', { method:'GET' }),
-        api('/haying_bills?select=*&order=created_at.desc', { method:'GET' }),
-        api('/haying_bill_settings?select=*&limit=1', { method:'GET' }),
-        api('/home_stats_settings?select=*&limit=1', { method:'GET' }),
-        api('/sale_sheets?select=*&order=sale_date.desc,created_at.desc', { method:'GET' })
+        apiLoad('/cows?select=*&order=number.asc', { method:'GET' }),
+        apiLoad('/treatments?select=*', { method:'GET' }),
+        apiLoad('/calvings?select=*', { method:'GET' }),
+        apiLoad('/general_notes?select=*', { method:'GET' }),
+        apiLoad('/weights?select=*', { method:'GET' }),
+        apiLoad('/breeding_records?select=*', { method:'GET' }),
+        apiLoad('/cow_photos?select=*', { method:'GET' }),
+        apiLoad('/herd_tally?select=*', { method:'GET' }),
+        apiLoad('/haying_log?select=*', { method:'GET' }),
+        apiLoad('/equipment_maintenance?select=*', { method:'GET' }),
+        apiLoad('/equipment?select=*', { method:'GET' }),
+        apiLoad('/calf_treatments?select=*', { method:'GET' }),
+        apiLoad('/calf_weights?select=*', { method:'GET' }),
+        apiLoad('/farm_notes?select=*', { method:'GET' }),
+        apiLoad('/bulls?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/haying_fields?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/medicines?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/locations?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/owners?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/cow_groups?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/med_reasons?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/todos?select=*&order=created_at.asc', { method:'GET' }),
+        apiLoad('/haying_customers?select=*&order=name.asc', { method:'GET' }),
+        apiLoad('/haying_bills?select=*&order=created_at.desc', { method:'GET' }),
+        apiLoad('/haying_bill_settings?select=*&limit=1', { method:'GET' }),
+        apiLoad('/home_stats_settings?select=*&limit=1', { method:'GET' }),
+        apiLoad('/sale_sheets?select=*&order=sale_date.desc,created_at.desc', { method:'GET' })
       ]);
       cows = cowsRes || [];
       treatments = treatRes || [];
@@ -2973,7 +2987,7 @@
       calfTreatments = calfTreatRes || [];
       calfWeights = calfWeightRes || [];
       farmNotes = farmNotesRes || [];
-      try{ paymentsList = (await api('/payments?select=*', { method:'GET' })) || []; }catch(e){ console.error('Could not load payments', e); }
+      try{ paymentsList = (await apiLoad('/payments?select=*', { method:'GET' })) || []; }catch(e){ console.error('Could not load payments', e); }
       bulls = bullsRes || [];
       hayingFields = hayingFieldsRes || [];
       medicines = medicinesRes || [];
@@ -2987,10 +3001,15 @@
       hayingBillSettings = (hayingBillSettingsRes && hayingBillSettingsRes[0]) || null;
       homeStatsSettings = (homeStatsSettingsRes && homeStatsSettingsRes[0]) || null;
       saleSheets = saleSheetsRes || [];
+      if(loadTimer) clearTimeout(loadTimer);
+      loadedOnce = true;
       saveOfflineCache();
       syncPendingWrites();
     }catch(e){
-      const cached = loadOfflineCache();
+      if(loadTimer) clearTimeout(loadTimer);
+      const timedOut = loadCtrl.signal.aborted;
+      // A refresh that times out keeps what is already on screen; the saved copy is only used for the first load.
+      const cached = (timedOut && loadedOnce) ? null : loadOfflineCache();
       if(cached){
         cows = cached.cows || [];
         treatments = cached.treatments || [];
@@ -3020,7 +3039,10 @@
         hayingBillSettings = cached.hayingBillSettings || null;
         homeStatsSettings = cached.homeStatsSettings || null;
         saleSheets = cached.saleSheets || [];
-        setTimeout(()=> showConnError('No connection — showing saved data from ' + offlineCacheAgeLabel(cached.savedAt) + '.'), 60);
+        loadedOnce = true;
+        setTimeout(()=> showConnError((timedOut ? 'Slow connection — showing saved data from ' : 'No connection — showing saved data from ') + offlineCacheAgeLabel(cached.savedAt) + '.'), 60);
+      } else if(timedOut && loadedOnce){
+        setTimeout(()=> showConnError('Slow connection — showing what is already on your screen.'), 60);
       } else {
       cows = []; treatments = []; calvings = []; generalNotes = []; weights = []; breedingRecords = []; cowPhotos = []; hayingLog = []; equipmentMaintenance = []; equipmentList = []; calfTreatments = []; calfWeights = []; farmNotes = []; bulls = []; hayingFields = []; medicines = []; locationsList = []; ownersList = []; groupsList = []; reasonsList = []; todos = []; hayingCustomers = []; hayingBills = []; hayingBillSettings = null; homeStatsSettings = null; saleSheets = [];
       }

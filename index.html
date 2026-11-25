@@ -16937,6 +16937,33 @@
     const keep = rep.columns.map((c,i)=> i).filter(i=> !hidden.includes(i));
     return Object.assign({}, rep, { columns: keep.map(i=> rep.columns[i]), rows: rep.rows.map(r=> keep.map(i=> r[i])) });
   }
+  // Turns an Ask Claude answer into lines for the "text it" window.
+  // A two-column table with a location column becomes one line per location: "Up North (3): 01, 171, 181".
+  // Any other table becomes one line per row; a paragraph answer becomes one line per sentence/line.
+  function claudeTextEntries(item){
+    const out = [];
+    if(item.report){
+      const rep = claudeVisibleReport(item.report, item.hidden);
+      const cols = rep.columns, rows = rep.rows;
+      const li = cols.findIndex(c=> /location|^lot$|farm|pasture/i.test(String(c)));
+      if(li !== -1 && cols.length === 2){
+        const oi = li === 0 ? 1 : 0, groups = new Map();
+        rows.forEach(r=>{
+          const k = claudeCellText(r[li]).trim() || 'No location';
+          if(!groups.has(k)) groups.set(k, []);
+          const v = claudeCellText(r[oi]).trim();
+          if(v) groups.get(k).push(v);
+        });
+        let i = 0;
+        groups.forEach((vals, k)=>{ out.push({ id:i++, line: k + ' (' + vals.length + '): ' + vals.join(', ') }); });
+      } else {
+        rows.forEach((r,i)=> out.push({ id:i, line: r.map(v=> claudeCellText(v).trim()).filter(Boolean).join(' \u00b7 ') }));
+      }
+    } else {
+      String(item.answer || '').split('\n').map(l=> l.replace(/\*\*/g,'').trim()).filter(Boolean).forEach((l,i)=> out.push({ id:i, line:l }));
+    }
+    return out.filter(e=> e.line);
+  }
   function claudeReportHtml(rep){
     return '<div style="font-size:16px;font-weight:700;color:#0C447C;margin-bottom:4px;">'+escapeHtml(rep.title)+'</div>'
       + '<div style="font-size:13px;margin-bottom:8px;">'+escapeHtml(rep.summary)+'</div>'
@@ -17039,6 +17066,9 @@
         <div class="modal-actions">
           <button class="btn btn-barn" id="acPrintBtn">🖨️ Print</button>
           <button class="btn btn-profile-tool hidden" id="acExportBtn" style="justify-content:center;">📊 Export to Excel</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-nav-tool btn-full" id="acTextBtn" style="justify-content:center;">📱 Text</button>
         </div>
         <div class="modal-actions">
           <button class="btn btn-nav-tool btn-full hidden" id="acColsBtn" style="justify-content:center;">☰ Columns</button>
@@ -17144,6 +17174,12 @@
     modal.querySelector('.modal-top-close-btn').addEventListener('click', closeModal);
     modal.querySelector('#acPrintBtn').addEventListener('click', ()=> claudePrintAnswer(Object.assign({}, current, { report: claudeVisibleReport(current.report, current.hidden) })));
     exportBtn.addEventListener('click', ()=> claudeExportReport(claudeVisibleReport(current.report, current.hidden)));
+    modal.querySelector('#acTextBtn').addEventListener('click', ()=>{
+      const entries = claudeTextEntries(current);
+      if(!entries.length){ showToast('Nothing to text'); return; }
+      const title = ((current.report && current.report.title) || 'Ask Claude').replace(/[<>&]/g,'');
+      sendTextListModal(title, entries, null);
+    });
     const saveName = ()=> (current.question || '').replace(/\s+/g,' ').slice(0, 60);
     modal.querySelector('#acSaveQuestionBtn').addEventListener('click', ()=>{
       const question = (current.question || q.value || '').trim();

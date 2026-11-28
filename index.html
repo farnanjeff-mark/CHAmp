@@ -15528,7 +15528,108 @@
     updateAdvancedSearchBadges();
     showAdvancedSearch();
     runAdvancedSearch();
+    if(menuIsComputer() && lastAdvancedSearchView.rows.length) openSearchAsReportPage(r);
     if(skipped) showToast('Ran it — ' + skipped + ' choice' + (skipped>1?'s':'') + ' no longer exist and were skipped');
+  }
+
+  // ===================== REPORT PAGE (computer screens only) =====================
+  // A finished-looking report: title, what it covers, summary boxes, the table, and Print / Excel / Edit buttons.
+  function openReportPage(opts){
+    const esc = escapeHtml;
+    const cards = (opts.cards || []).map(c=> `<div style="flex:1 1 150px;background:#E6F1FB;border:1.5px solid #2E88C4;border-left:6px solid #3C9142;border-radius:4px;padding:10px 12px;">
+        <div style="font-family:Arial,sans-serif;font-size:12px;color:#0C447C;">${esc(c.label)}</div>
+        <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:700;color:#0C447C;">${esc(String(c.value))}</div></div>`).join('');
+    const head = opts.headers.map(h=> `<th style="text-align:left;padding:8px 10px;font-size:12px;background:#0274BA;color:#fff;white-space:nowrap;">${esc(h)}</th>`).join('');
+    const body = opts.rows.map((r,i)=> `<tr style="background:${i%2===0?'#fff':'#E6F1FB'};">${r.map(v=>`<td style="padding:7px 10px;font-size:13px;white-space:nowrap;border-bottom:1px solid #cfe0ee;">${esc(v == null ? '' : String(v))}</td>`).join('')}</tr>`).join('');
+    const modal = openModal(`
+      <div class="modal-title">${esc(opts.title)}</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#0C447C;margin-bottom:12px;">${esc(opts.criteria || '')}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">${cards}</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <button class="btn" id="rpPrint" style="background:#3C9142;color:#fff;border-color:#3C9142;">🖨️ Print</button>
+        <button class="btn" id="rpExcel" style="background:#3C9142;color:#fff;border-color:#3C9142;">📊 Excel</button>
+        ${opts.onEdit ? '<button class="btn btn-barn" id="rpEdit">Edit Report</button>' : ''}
+        <button class="btn btn-outline" id="rpClose" style="margin-left:auto;">Close</button>
+      </div>
+      ${opts.rows.length ? `<div style="overflow:auto;max-height:55vh;border:1px solid #cfe0ee;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;"><thead style="position:sticky;top:0;"><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>` : '<p class="empty">Nothing to show in this report right now.</p>'}
+    `);
+    modal.style.maxWidth = '1200px'; modal.style.width = '96%';
+    const data = { headers: opts.headers, rows: opts.rows.map(r=> r.map(v=> v == null ? '' : String(v))) };
+    modal.querySelector('#rpPrint').addEventListener('click', ()=> printReportData(opts.title, data));
+    modal.querySelector('#rpExcel').addEventListener('click', ()=> exportReportData(opts.title, data));
+    modal.querySelector('#rpClose').addEventListener('click', ()=> closeModal());
+    const eb = modal.querySelector('#rpEdit');
+    if(eb) eb.addEventListener('click', ()=>{ closeModal(); opts.onEdit(); });
+  }
+  function rpPct(n, total){ return total ? Math.round(n * 100 / total) + '%' : '0%'; }
+  function rpDaysFromToday(iso){ return Math.round((new Date(iso + 'T12:00:00') - new Date(todayLocal() + 'T12:00:00')) / 86400000); }
+  function rpCowLoc(num){ const c = cows.find(x=> x.number === num); return c ? (c.lot || '') : ''; }
+
+  // a saved Cow/Calf Search shown as a finished report page
+  function openSearchAsReportPage(r){
+    const v = lastAdvancedSearchView;
+    const objs = lastAdvRowObjs || [];
+    let cards = [];
+    if(v.mode === 'calf'){
+      const cvs = objs.map(o=> o.cv).filter(Boolean);
+      const ages = cvs.filter(cv=> cv.calving_date).map(cv=> -rpDaysFromToday(cv.calving_date));
+      const bulls = cvs.filter(cv=> cv.calf_sex === 'B').length, heifers = cvs.filter(cv=> cv.calf_sex === 'H').length;
+      cards = [ { label:'Calves', value: cvs.length },
+        { label:'Average age (days)', value: ages.length ? Math.round(ages.reduce((a,b)=> a + b, 0) / ages.length) : '—' },
+        { label:'Bulls', value: rpPct(bulls, cvs.length) }, { label:'Heifers', value: rpPct(heifers, cvs.length) } ];
+    } else {
+      const list = objs.map(o=> o.c);
+      cards = [ { label:'Cows', value: list.length }, { label:'In heat', value: list.filter(c=> c.in_heat).length },
+        { label:'Bred (not open)', value: list.filter(c=>{ const b = breedingFor(c.number).filter(x=> x.breed_date).sort((a,z)=> String(a.breed_date).localeCompare(String(z.breed_date))); return b.length && b[b.length-1].pregnancy_status !== 'Open'; }).length } ];
+    }
+    openReportPage({ title: r.name, criteria: advActiveSummary() || (v.mode === 'calf' ? 'All calves' : 'All cows'), cards, headers: v.headers, rows: v.rows,
+      onEdit: ()=> editSavedReportModal(r.id) });
+  }
+
+  // ready-made reports (built into the app, computer screens only)
+  const READY_REPORTS = [
+    { id:'calf-inventory', title:'Calf Inventory', sub:'All calves still active, newest first' },
+    { id:'cows-in-heat',   title:'Cows In Heat',   sub:'Every cow marked In Heat, grouped by location' },
+    { id:'bred-and-due',   title:'Bred and Due',   sub:'Bred cows that have not calved, soonest due date first' }
+  ];
+  function runReadyReport(id){
+    const today = todayLocal();
+    if(id === 'calf-inventory'){
+      const cvs = calvings.filter(cv=> !cv.promoted_to_cow_number && (!cv.calf_outcome || cv.calf_outcome === 'active'))
+        .sort((a,b)=> String(b.calving_date||'').localeCompare(String(a.calving_date||'')));
+      const ages = cvs.filter(cv=> cv.calving_date).map(cv=> -rpDaysFromToday(cv.calving_date));
+      const bulls = cvs.filter(cv=> cv.calf_sex === 'B').length, heifers = cvs.filter(cv=> cv.calf_sex === 'H').length;
+      openReportPage({ title:'Calf Inventory', criteria:'All active calves (not sold, died or kept) · ' + fmtDate(today),
+        cards:[ { label:'Calves', value: cvs.length }, { label:'Average age (days)', value: ages.length ? Math.round(ages.reduce((a,b)=> a + b, 0) / ages.length) : '—' },
+                { label:'Bulls', value: rpPct(bulls, cvs.length) }, { label:'Heifers', value: rpPct(heifers, cvs.length) } ],
+        headers:['Mother #','Sex','Born','Age (days)','Birth Wt (lbs)','Sire','Location'],
+        rows: cvs.map(cv=> ['#' + cv.cow_number, calfSexLabel(cv.calf_sex), cv.calving_date ? fmtDateShort(cv.calving_date) : '', cv.calving_date ? -rpDaysFromToday(cv.calving_date) : '', cv.birth_weight != null ? cv.birth_weight : '', cv.sire || '', rpCowLoc(cv.cow_number)]) });
+    } else if(id === 'cows-in-heat'){
+      const list = cows.filter(c=> c.in_heat).sort((a,b)=> String(a.lot||'~').localeCompare(String(b.lot||'~')) || cowNumCmp(a.number, b.number));
+      const locs = new Set(list.map(c=> c.lot || 'No location'));
+      openReportPage({ title:'Cows In Heat', criteria:'Every cow marked In Heat, grouped by location · ' + fmtDate(today),
+        cards:[ { label:'Cows in heat', value: list.length }, { label:'Locations', value: locs.size } ],
+        headers:['Location','Cow #','Group','Last Bred','Bred To'],
+        rows: list.map(c=>{ const b = breedingFor(c.number).filter(x=> x.breed_date).sort((a,z)=> String(z.breed_date).localeCompare(String(a.breed_date)))[0];
+          return [c.lot || '', '#' + c.number, c.cow_group || '', b ? fmtDateShort(b.breed_date) : '', b ? (b.bred_to || b.natural_sire || '') : '']; }) });
+    } else if(id === 'bred-and-due'){
+      const out = [];
+      cows.filter(c=> isActiveStatus(c)).forEach(c=>{
+        const brs = breedingFor(c.number).filter(b=> b.breed_date).sort((a,b)=> String(a.breed_date).localeCompare(String(b.breed_date)));
+        if(!brs.length) return;
+        const last = brs[brs.length - 1];
+        if(last.pregnancy_status === 'Open' || !last.expected_due_date) return;
+        if(calvings.some(k=> k.cow_number === c.number && k.calving_date && String(k.calving_date) >= String(last.breed_date))) return;
+        out.push({ c, last });
+      });
+      out.sort((a,b)=> String(a.last.expected_due_date).localeCompare(String(b.last.expected_due_date)));
+      const soon = out.filter(o=> rpDaysFromToday(o.last.expected_due_date) <= 30).length;
+      const et = out.filter(o=> o.last.pregnancy_method === 'ET').length;
+      openReportPage({ title:'Bred and Due', criteria:'Bred cows not marked Open and not yet calved, soonest due date first · ' + fmtDate(today),
+        cards:[ { label:'Bred cows', value: out.length }, { label:'Due within 30 days', value: soon }, { label:'AI / Bull-bred', value: out.length - et }, { label:'Embryo transfer', value: et } ],
+        headers:['Cow #','Location','Method','Bred','Bred To','Due','Days To Due'],
+        rows: out.map(o=>[ '#' + o.c.number, o.c.lot || '', o.last.pregnancy_method || '', fmtDateShort(o.last.breed_date), o.last.bred_to || o.last.natural_sire || '', fmtDateShort(o.last.expected_due_date), rpDaysFromToday(o.last.expected_due_date) ]) });
+    }
   }
 
   // Starred reports shown at the top of the Reports page
@@ -15536,8 +15637,10 @@
     const box = document.getElementById('reportsStarredBox');
     if(!box) return;
     const starred = savedReports.filter(r=> r.starred);
-    if(!starred.length){ box.innerHTML = ''; return; }
-    box.innerHTML = `<div class="section-label" style="margin-top:0;">★ Starred</div>
+    const ready = menuIsComputer() ? `<div class="section-label" style="margin-top:0;">Ready-Made Reports</div>
+      <div class="sr-folder">${READY_REPORTS.map(x=> `<div class="sr-row"><div class="sr-main" data-act="ready" data-id="${x.id}"><div class="sr-title">${escapeHtml(x.title)}</div><div class="sr-sub">${escapeHtml(x.sub)}</div></div></div>`).join('')}</div>` : '';
+    if(!starred.length){ box.innerHTML = ready; return; }
+    box.innerHTML = ready + `<div class="section-label" style="margin-top:0;">★ Starred</div>
       <div class="sr-folder">${starred.map(r=>{
         const fol = savedFolders.find(f=> f.id === r.folder_id);
         const sub = (fol ? '📁 ' + escapeHtml(fol.name) + ' — ' : '')
@@ -15563,6 +15666,8 @@
     }catch(e){ /* quiet: keep whatever was already shown */ }
   }
   document.getElementById('reportsStarredBox').addEventListener('click', (e)=>{
+    const rd = e.target.closest('[data-act="ready"]');
+    if(rd){ runReadyReport(rd.dataset.id); return; }
     const t = e.target.closest('[data-act="run"]');
     if(t) runSavedReport(t.dataset.id);
   });

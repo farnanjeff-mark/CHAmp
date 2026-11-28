@@ -392,6 +392,9 @@
        The farm name box and labels are the four elements marked class="dsk-only" in the home screen;
        they are invisible on phones. To remove the polish, delete those four lines and the rules in this block that mention dsk-only. */
     .dsk-only{display:block;}
+    .dsk-name, .dsk-label, .dsk-find{display:none !important;}
+    #homeView .home-btn-row > *{height:70px !important;min-height:70px !important;padding-top:4px !important;padding-bottom:4px !important;box-sizing:border-box;overflow:hidden;}
+    #homeView .home-btn-row.home-row-first{padding-top:8px !important;}
     .dsk-name{background:#fff;border:2px solid #2E88C4;border-radius:10px;padding:10px 8px;text-align:center;font-family:Arial,sans-serif;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 18px;}
     .dsk-label{display:none !important;font-family:Arial,sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;color:#3F1D4D;text-align:left;margin:12px 4px 6px;padding-bottom:3px;border-bottom:2px solid #E3E8EE;}
     #homeView [style*="margin:-15px 0 25px"]{margin:0 0 22px !important;}
@@ -400,7 +403,7 @@
     #homeView div[style*="display:flex;gap:6px"]{gap:8px !important;}
     /* Clean list look (added Nov 1): no keypad (you type the cow number), and the tiles become a column:
        a small box with the number (or icon) and a larger label to the right, outside the box. */
-    .home-keypad{display:none !important;}
+    /* (Nov 28) the computer left side now matches the phone: number pad is shown again */
     .dsk-name{font-size:20px;box-shadow:0 3px 8px rgba(0,0,0,.18);}
     .dsk-find{display:flex;gap:8px;margin:0 0 22px;}
     #dskCowInput{flex:1;min-width:0;height:44px;border:1px solid #2E88C4;border-radius:8px;padding:0 12px;font-family:Arial,sans-serif;font-size:20px;font-weight:700;color:var(--ink);background:#fff;}
@@ -412,7 +415,6 @@
     #homeView .home-btn-row{padding-top:8px !important;gap:8px !important;}
     #homeView .home-btn-row.home-top-row, #homeView .home-btn-row.home-row-first{padding-top:0 !important;}
     /* left side menu: button names are regular weight (not bold) */
-    #homeView .home-btn-row, #homeView .home-btn-row *, .dsk-find #homeAddCowBtn, .dsk-find #homeAddCowBtn *{font-weight:400 !important;}
     .dsk-find #homeAddCowBtn span:first-child{font-size:22px !important;}
     #dskCowGo{display:none !important;width:56px;height:44px;background:#3C9142;color:#fff;border:1px solid #2E88C4;border-radius:8px;font-family:Arial,sans-serif;font-weight:700;font-size:15px;cursor:pointer;}
     /* Blue and white instead of tan on desktop (added Nov 1): cards, pop-ups, forms, and report tables.
@@ -2636,7 +2638,7 @@
   const MENU_WIDE_ONLY = ['checkbookBtn'];
   const MENU_WIDE_MIN_WIDTH = 1000;
   function menuIsComputer(){ return window.innerWidth >= MENU_WIDE_MIN_WIDTH && window.matchMedia('(hover:hover) and (pointer:fine)').matches; }
-  function menuHidden(id){ return !menuIsComputer() && MENU_WIDE_ONLY.indexOf(id) >= 0; }
+  function menuHidden(id){ return MENU_WIDE_ONLY.indexOf(id) >= 0; }   // Register is placed by hand at the bottom of Main, never in the grid
   const MENU_SYNC_ID = 'homeSyncHoldWrap';   // the green Sync box (number pad, top-left) can move to the More screen too
   const MENU_DEFAULT_SUB = [MENU_SYNC_ID,'homeQuickSearchMicBtn','homeCalvedSinceWrap','vaultBtn','homeBulkEntryBtn','homeInHeatWrap','checkbookBtn'];
   let menuSubIds = MENU_DEFAULT_SUB.slice();
@@ -2754,8 +2756,8 @@
     menuOrdered().forEach(m=>{
       const el = document.getElementById(m[0]);
       const inSub = menuSubIds.indexOf(m[0]) >= 0;
-      const pinnedHere = !desk && menuIsPinned(m[0]);
-      const show = !menuHidden(m[0]) && (pinnedHere || desk || (menuPage === 'sub' ? inSub : !inSub));
+      const pinnedHere = menuIsPinned(m[0]);
+      const show = !menuHidden(m[0]) && (pinnedHere || (menuPage === 'sub' ? inSub : !inSub));
       el.classList.toggle('menu-off', !show);
       if(show && !pinnedHere) showIds.push(m[0]);
     });
@@ -2763,28 +2765,26 @@
     if(menuBackBtn.parentNode) menuBackBtn.parentNode.removeChild(menuBackBtn);
     // Computer screen: the original 4 x 4 grid in the original order (no Sync/Voice, no saved order)
     const BIG = ['vaultBtn','checkbookBtn'];   // computer: Vault and Register are big full-width buttons at the top
-    const seq = (desk ? MENU_ITEMS.filter(m=>m[0]!==MENU_SYNC_ID && m[0]!=='homeQuickSearchMicBtn' && BIG.indexOf(m[0])<0).map(m=>m[0]) : showIds).map(id=>document.getElementById(id));
+    const seq = showIds.map(id=>document.getElementById(id));
     if(!menuBig){
       menuBig = document.createElement('div');
       menuBig.className = 'menu-off';
-      menuBig.style.cssText = 'margin-bottom:14px;';
-      menuBigRows = [0,1].map(()=>{ const r = document.createElement('div'); r.className = 'home-btn-row'; r.style.cssText = 'display:flex;gap:6px;padding-top:6px;'; menuBig.appendChild(r); return r; });
-      menuRows[0].parentNode.insertBefore(menuBig, menuRows[0]);
+      menuBig.style.cssText = 'margin-top:4px;margin-bottom:14px;';
+      menuBigRows = [0].map(()=>{ const r = document.createElement('div'); r.className = 'home-btn-row'; r.style.cssText = 'display:flex;gap:6px;padding-top:6px;'; menuBig.appendChild(r); return r; });
+      menuBigRows[0].appendChild(document.getElementById('checkbookBtn'));
     }
-    menuBig.classList.toggle('menu-off', !desk);
-    if(desk){ menuBigRows[0].appendChild(document.getElementById('vaultBtn')); menuBigRows[1].appendChild(document.getElementById('checkbookBtn')); }
+    // computer only: Register is a full-width button at the very bottom of the Main screen (not on More, not on a phone)
+    { const lastRow = menuRows[menuRows.length - 1]; if(menuBig.previousSibling !== lastRow) lastRow.parentNode.insertBefore(menuBig, lastRow.nextSibling); }
+    menuBig.classList.toggle('menu-off', !(desk && menuPage === 'main'));
+    document.getElementById('checkbookBtn').classList.toggle('menu-off', !(desk && menuPage === 'main'));
     // Sync is now a regular button (its old spot at the top-left of the number pad stays blank).
     // Computer screen has no number pad, so Sync and Voice stay hidden there.
     document.getElementById(MENU_SYNC_ID).style.minHeight = '62px';
-    if(!desk){
-      if(menuPage === 'sub') seq.push(menuBackBtn);
-      else if(menuSubIds.length) seq.push(menuMoreBtn);
-    }
-    // desktop has no number pad (you type the number), so Voice stays hidden there
-    if(desk){ document.getElementById('homeQuickSearchMicBtn').classList.add('menu-off'); document.getElementById(MENU_SYNC_ID).classList.add('menu-off'); }
-    // phone: the four pinned buttons live in the fixed row; computer: that row is hidden
-    menuPinnedRow.classList.toggle('menu-off', desk);
-    if(!desk) MENU_PINNED.forEach(id=>menuPinnedRow.appendChild(document.getElementById(id)));
+    if(menuPage === 'sub') seq.push(menuBackBtn);
+    else if(menuSubIds.length) seq.push(menuMoreBtn);
+    // the four pinned buttons (Voice, Vault, To Do, Activity) live in the fixed row on every screen size
+    menuPinnedRow.classList.remove('menu-off');
+    MENU_PINNED.forEach(id=>menuPinnedRow.appendChild(document.getElementById(id)));
     // make extra rows if the More screen needs more than four
     while(menuRows.length < Math.ceil(seq.length/4)){
       const last = menuRows[menuRows.length-1];
@@ -10314,7 +10314,7 @@
     const btn = document.getElementById('homeAddCowBtn'), slot = document.getElementById('homeAddCowSlot'), box = document.querySelector('.dsk-find');
     if(!btn || !slot || !box) return;
     const mq = window.matchMedia('screen and (min-width:1100px) and (hover:hover) and (pointer:fine)');
-    const place = ()=>{ (mq.matches ? box : slot).appendChild(btn); };
+    const place = ()=>{ slot.appendChild(btn); };
     place();
     if(mq.addEventListener) mq.addEventListener('change', place); else if(mq.addListener) mq.addListener(place);
   })();
@@ -18992,12 +18992,6 @@
     if(homeView.classList.contains('hidden')) return;
     const tag = (e.target.tagName || '').toLowerCase();
     if(tag === 'input' || tag === 'textarea' || tag === 'select') return;
-    if(window.matchMedia('(min-width:1100px) and (hover:hover) and (pointer:fine)').matches){
-      // on a computer there is no keypad: typing a number goes into the side menu box
-      const di = document.getElementById('dskCowInput');
-      if(di && e.key >= '0' && e.key <= '9') di.focus();
-      return;
-    }
     if(e.key >= '0' && e.key <= '9'){
       homeQuickSearchPressDigit(e.key);
     } else if(e.key === 'Backspace'){

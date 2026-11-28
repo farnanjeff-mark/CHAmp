@@ -1573,6 +1573,8 @@
     <div class="gs-bar" id="gsBar"></div>
   </div>
 
+  <div class="view hidden" id="reportPageView"><div id="reportPageBody"></div></div>
+
   <div class="view hidden" id="savedReportsView">
     <button class="btn btn-outline btn-full" id="savedReportsHomeBtn" style="margin-bottom:16px;">🏠 Home</button>
     <div class="modal-title" style="margin-bottom:6px;">Saved Reports</div>
@@ -15536,32 +15538,48 @@
   // A finished-looking report: title, what it covers, summary boxes, the table, and Print / Excel / Edit buttons.
   function openReportPage(opts){
     const esc = escapeHtml;
+    const view = document.getElementById('reportPageView');
     const cards = (opts.cards || []).map(c=> `<div style="flex:1 1 150px;background:#E6F1FB;border:1.5px solid #2E88C4;border-left:6px solid #3C9142;border-radius:4px;padding:10px 12px;">
         <div style="font-family:Arial,sans-serif;font-size:12px;color:#0C447C;">${esc(c.label)}</div>
         <div style="font-family:Arial,sans-serif;font-size:24px;font-weight:700;color:#0C447C;">${esc(String(c.value))}</div></div>`).join('');
     const head = opts.headers.map(h=> `<th style="text-align:left;padding:8px 10px;font-size:12px;background:#0274BA;color:#fff;white-space:nowrap;">${esc(h)}</th>`).join('');
     const body = opts.rows.map((r,i)=> `<tr style="background:${i%2===0?'#fff':'#E6F1FB'};">${r.map(v=>`<td style="padding:7px 10px;font-size:13px;white-space:nowrap;border-bottom:1px solid #cfe0ee;">${esc(v == null ? '' : String(v))}</td>`).join('')}</tr>`).join('');
-    const modal = openModal(`
-      <div class="modal-title">${esc(opts.title)}</div>
-      <div style="font-family:Arial,sans-serif;font-size:13px;color:#0C447C;margin-bottom:12px;">${esc(opts.criteria || '')}</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">${cards}</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+    document.getElementById('reportPageBody').innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-outline" id="rpBack">← Back</button>
         <button class="btn" id="rpPrint" style="background:#3C9142;color:#fff;border-color:#3C9142;">🖨️ Print</button>
         <button class="btn" id="rpExcel" style="background:#3C9142;color:#fff;border-color:#3C9142;">📊 Excel</button>
         ${opts.onEdit ? '<button class="btn btn-barn" id="rpEdit">Edit Report</button>' : ''}
-        <button class="btn btn-outline" id="rpClose" style="margin-left:auto;">Close</button>
       </div>
-      ${opts.rows.length ? `<div style="overflow:auto;max-height:55vh;border:1px solid #cfe0ee;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;"><thead style="position:sticky;top:0;"><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>` : '<p class="empty">Nothing to show in this report right now.</p>'}
-    `);
-    modal.style.maxWidth = '1200px'; modal.style.width = '96%';
+      <div style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0C447C;margin-bottom:4px;">${esc(opts.title)}</div>
+      <div style="font-family:Arial,sans-serif;font-size:13px;color:#0C447C;margin-bottom:12px;">${esc(opts.criteria || '')}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">${cards}</div>
+      ${opts.rows.length ? `<div style="overflow:auto;max-height:calc(100vh - 300px);border:1px solid #cfe0ee;"><table style="width:100%;border-collapse:collapse;font-family:Arial,sans-serif;"><thead style="position:sticky;top:0;"><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>` : '<p class="empty">Nothing to show in this report right now.</p>'}`;
+    // show this screen in the right-hand window, hiding whatever other screen was open
+    document.querySelectorAll('.app > .view').forEach(v=>{ if(v !== view && v.id !== 'homeView') v.classList.add('hidden'); });
+    ['fabAdd','fabAddEquipment','quickActionView'].forEach(id=>{ const e = document.getElementById(id); if(e) e.classList.add('hidden'); });
+    setHeaderTitle(opts.title, '');
+    view.classList.remove('hidden');
+    window.scrollTo(0, 0);
     const data = { headers: opts.headers, rows: opts.rows.map(r=> r.map(v=> v == null ? '' : String(v))) };
-    modal.querySelector('#rpPrint').addEventListener('click', ()=> printReportData(opts.title, data));
-    modal.querySelector('#rpExcel').addEventListener('click', ()=> exportReportData(opts.title, data));
-    modal.querySelector('#rpClose').addEventListener('click', ()=> closeModal());
-    const eb = modal.querySelector('#rpEdit');
-    if(eb) eb.addEventListener('click', ()=>{ closeModal(); opts.onEdit(); });
+    document.getElementById('rpPrint').addEventListener('click', ()=> printReportData(opts.title, data));
+    document.getElementById('rpExcel').addEventListener('click', ()=> exportReportData(opts.title, data));
+    document.getElementById('rpBack').addEventListener('click', ()=>{ view.classList.add('hidden'); (opts.onBack || showReports)(); });
+    const eb = document.getElementById('rpEdit');
+    if(eb) eb.addEventListener('click', ()=> opts.onEdit());
   }
-  function rpPct(n, total){ return total ? Math.round(n * 100 / total) + '%' : '0%'; }
+  // if any other screen opens (Reports, Cow Search, a card...), this report screen steps out of the way
+  (function(){
+    const view = document.getElementById('reportPageView');
+    const obs = new MutationObserver(muts=>{
+      muts.forEach(m=>{
+        const t = m.target;
+        if(t !== view && t.id !== 'homeView' && !t.classList.contains('hidden')) view.classList.add('hidden');
+      });
+    });
+    document.querySelectorAll('.view').forEach(v=>{ if(v !== view && v.id !== 'homeView') obs.observe(v, { attributes:true, attributeFilter:['class'] }); });
+  })();
+    function rpPct(n, total){ return total ? Math.round(n * 100 / total) + '%' : '0%'; }
   function rpDaysFromToday(iso){ return Math.round((new Date(iso + 'T12:00:00') - new Date(todayLocal() + 'T12:00:00')) / 86400000); }
   function rpCowLoc(num){ const c = cows.find(x=> x.number === num); return c ? (c.lot || '') : ''; }
 
@@ -15583,7 +15601,7 @@
         { label:'Bred (not open)', value: list.filter(c=>{ const b = breedingFor(c.number).filter(x=> x.breed_date).sort((a,z)=> String(a.breed_date).localeCompare(String(z.breed_date))); return b.length && b[b.length-1].pregnancy_status !== 'Open'; }).length } ];
     }
     openReportPage({ title: r.name, criteria: advActiveSummary() || (v.mode === 'calf' ? 'All calves' : 'All cows'), cards, headers: v.headers, rows: v.rows,
-      onEdit: ()=> editSavedReportModal(r.id) });
+      onEdit: ()=> editSavedReportModal(r.id), onBack: ()=> showAdvancedSearch() });
   }
 
   // ready-made reports (built into the app, computer screens only)
